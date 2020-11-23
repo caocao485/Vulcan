@@ -215,6 +215,7 @@ public class Parser {
      */
     private Variable[] parseIdList() {
         ArrayList<Variable> idList = new ArrayList<>();
+        //map to 前探
         if (in.peek() == TO) {
             return idList.toArray(new Variable[idList.size()]);
         }
