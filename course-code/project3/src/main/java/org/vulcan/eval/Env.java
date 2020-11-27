@@ -1,14 +1,17 @@
 package org.vulcan.eval;
 
 import org.vulcan.eval.value.JamVal;
+import org.vulcan.parse.EvalException;
 import org.vulcan.parse.Variable;
 
 import java.util.HashMap;
 
+import static org.vulcan.eval.value.Void.VOID;
+
 /**
  * @author Think
  */
-public class Env<T extends JamVal> {
+public class Env<T> {
     private HashMap<Variable, T> frame;
     private Env<T> fatherEnv;
 
@@ -21,7 +24,7 @@ public class Env<T extends JamVal> {
         this.fatherEnv = fatherEnv;
     }
 
-    public static <T extends JamVal> Env<T> extendEnv(final HashMap<Variable, T> frame, final Env<T> fatherEnv) {
+    public static <T> Env<T> extendEnv(final HashMap<Variable, T> frame, final Env<T> fatherEnv) {
         return new Env<>(frame, fatherEnv);
     }
 
@@ -32,6 +35,14 @@ public class Env<T extends JamVal> {
      */
     public void setValueByVar(final Variable var, final T value) {
 
+    }
+
+    public boolean hasVariable(Variable var){
+        if(this.frame != null && this.frame.containsKey(var)){
+            return true;
+        }else{
+            return this.fatherEnv != null && this.fatherEnv.hasVariable(var);
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -45,6 +56,8 @@ public class Env<T extends JamVal> {
                 } else {
                     return null;
                 }
+            }else if(value == VOID){
+                throw new EvalException(var,"could refer to a uninitialized variable");
             }
         }
         return value;

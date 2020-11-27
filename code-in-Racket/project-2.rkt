@@ -1,12 +1,13 @@
 #lang racket
 (define-struct var (name) #:transparent)
-(define-struct const (number) #:transparent)
 (define-struct proc (param body) #:transparent)
 #;(define-struct let0 (var exp body) #:transparent)
 (define-struct app (rator rand) #:transparent)
 (define-struct add (left right) #:transparent)
 
 ;;Value
+(define-struct Boolean (b))
+(define-struct const (number) #:transparent)
 (define-struct closure (param body env) #:transparent)
 
 (define parse
@@ -214,11 +215,11 @@
        (closure param body env)]
       [(app rator rand)
        (match-define (closure param body env0) (eval-env rator env))
-       (eval-env  body (env-add param (eval-env rand env) env0))]
+       (eval-env  body (extend param (eval-env rand env) env0))]
       [else
        (error M "cannot eval this expression")])))
 
-(define (env-add var value env)
+(define (extend var value env)
   (cons (cons var value) env))
          
 (define(lookup var env)
@@ -287,7 +288,7 @@
          (force-eval(eval-need rator env)))
        (eval-need
         body
-        (env-add
+        (extend
          param
          (make-thunk (lambda()
                        (eval-need rand env))null #f) env0))]

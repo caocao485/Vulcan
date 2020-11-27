@@ -2,10 +2,7 @@ package org.vulcan.eval;
 
 
 import org.vulcan.eval.value.JamVal;
-import org.vulcan.parse.Ast;
-import org.vulcan.parse.CallByValueVisitor;
-import org.vulcan.parse.OtherCallVisitor;
-import org.vulcan.parse.Parser;
+import org.vulcan.parse.*;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -30,20 +27,63 @@ public class Interpreter {
     public Interpreter(final Reader reader) {
         this.parser = new Parser(reader);
         this.astResult = this.parser.parse();
+        astResult.accept(new CheckAstVisitor(new Env<>()));
     }
 
+    public JamVal valueValue(){
+        return this.astResult.accept(new CallByValueVisitor(new Env<>()));
+    }
 
-    public JamVal callByValue() {
+    public JamVal nameValue(){
+        return forceEval(this.astResult.accept(new OtherCallVisitor(new Env<>(), false,false)));
+    }
+
+    public JamVal needValue(){
+        return forceEval(this.astResult.accept(new OtherCallVisitor(new Env<>(), true,false)));
+    }
+
+    public JamVal valueName(){
+        return this.astResult.accept(new CallByValueVisitor(new Env<>(),true,false));
+    }
+
+    public JamVal nameName(){
+     return forceEval(this.astResult.accept(new OtherCallVisitor(new Env<>(), false, true,false)));
+    }
+
+  public JamVal needName() {
+    return forceEval(this.astResult.accept(new OtherCallVisitor(new Env<>(), true,true,false)));
+  }
+
+  public JamVal valueNeed(){
+      return this.astResult.accept(new CallByValueVisitor(new Env<>(),true,true));
+  }
+
+  public JamVal nameNeed() {
+      return forceEval(this.astResult.accept(new OtherCallVisitor(new Env<>(), false,true)));
+  }
+  public JamVal needNeed(){
+      return forceEval(this.astResult.accept(new OtherCallVisitor(new Env<>(), false,true)));
+  }
+
+   public JamVal callByValue() {
         return this.astResult.accept(new CallByValueVisitor(new Env<>()));
     }
 
 
     public JamVal callByName() {
-        return forceEval(this.astResult.accept(new OtherCallVisitor(new Env<>(), false)));
+        return forceEval(this.astResult.accept(new OtherCallVisitor(new Env<>(), false,false)));
     }
 
     public JamVal callByNeed() {
-        return forceEval(this.astResult.accept(new OtherCallVisitor(new Env<>(), true)));
+        return forceEval(this.astResult.accept(new OtherCallVisitor(new Env<>(), true,false)));
+    }
+
+    public JamVal callByNameLazyCons() {
+        return forceEval(this.astResult.accept(new OtherCallVisitor(new Env<>(), false,true)));
+    }
+
+    public JamVal callByNeedLazyCons() {
+        return forceEval(this.astResult.accept(new OtherCallVisitor(new Env<>(), true,true)));
     }
 
     public static void main(String[] args) {
@@ -54,4 +94,6 @@ public class Interpreter {
         System.out.println(interp.callByValue().toString());
     }
 }
+
+
 

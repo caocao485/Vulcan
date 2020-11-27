@@ -16,6 +16,7 @@ public class ClosureVal<T extends JamVal> implements JamVal {
     private Env<T> env;
 
     public ClosureVal(final Variable[] vars, final Ast body, final Env<T> env) {
+
         this.vars = vars;
         this.body = body;
         this.env = env;
@@ -59,7 +60,6 @@ public class ClosureVal<T extends JamVal> implements JamVal {
         return "ClosureVal{" +
                 "vars=" + Arrays.toString(vars) +
                 ", body=" + body +
-                ", env=" + env +
                 '}';
     }
 
