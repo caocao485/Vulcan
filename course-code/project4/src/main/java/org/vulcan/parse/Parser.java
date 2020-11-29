@@ -103,6 +103,10 @@ public class Parser {
             final Ast body = this.parseExp();
             return new Map(vars, body);
         }
+        if(peek == LeftBrace.ONLY){
+            this.in.readToken();
+            return this.parseBlock();
+        }
         Ast currentAst = this.parseTerm(this.in.readToken());
         while (this.in.peek() != null && this.in.peek().getType() == OPERATOR && ((Op) this.in.peek()).isBinOp()) {
             final Op binOp = (Op) this.in.readToken();
@@ -114,6 +118,23 @@ public class Parser {
         }
         // TODO: multiple terms
         return currentAst;
+    }
+
+    private Block parseBlock() {
+        final ArrayList<Ast> ExpList = new ArrayList<>();
+        if (this.in.peek() == RightBrace.ONLY) {
+            throw new ParseException("empty block");
+        }
+        ExpList.add(this.parseExp());
+        while (this.in.peek() == SemiColon.ONLY) {
+            this.in.readToken();
+            ExpList.add(this.parseExp());
+        }
+        final Token token = this.in.readToken();
+        if (token != RightBrace.ONLY) {
+            this.error(token, "missing right-brace");
+        }
+        return new Block(ExpList.toArray(new Ast[ExpList.size()]));
     }
 
 

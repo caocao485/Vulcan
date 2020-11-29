@@ -272,38 +272,38 @@ public class Assign2Test extends TestCase {
     public void testLazyConsSieve() {
         try {
             final String output
-                    = "55";
-            final String input =
-                   "let susp? := map l to cons?(l) & function?(first(l));\n" +
-                           " makeSusp := map f to cons(f, null);\n" +
-                           "in let block2 := map x,y to y;\n" +
-                           "           fo := map prom to if susp?(prom) then (first(prom))() else prom;\n" +
-                           "            Y := map f to\n" +
-                           "                   let g := map x to f(x(x));\n" +
-                           "                   in g(g);\n" +
-                           "   in let MAPSTREAM := map mapStream to\n" +
-                           "                          map f,l to let fol := fo(l);\n" +
-                           "                                     in if (fol = null) then null\n" +
-                           "                                     else cons(f(first(fol)), makeSusp(map  to mapStream(f, rest(fol))));\n" +
-                           "             FILTER := map filter to\n" +
-                           "                          map p,l to let fol := fo(l);\n" +
-                           "                                     in if (fol = null) then null\n" +
-                           "                                        else if p(first(fol)) then filter(p, rest(fol))\n" +
-                           "                                        else cons(first(fol), makeSusp(map  to filter(p, rest(fol))));\n" +
-                           "            divides := map a,b to (((b / a) * a) = b);\n" +
-                           "            INITSEG := map initSeg to\n" +
-                           "                          map l,n to if (n <= 0) then null\n" +
-                           "                                     else let fol := fo(l);\n" +
-                           "                                          in cons(first(fol), initSeg(rest(fol), (n - 1)));\n" +
-                           "       in let PRIMES := map primes to\n" +
-                           "                          map l to let fol := fo(l);\n" +
-                           "                                   in let l1 := (Y(FILTER))(map x to divides(first(fol), x), rest(fol));\n" +
-                           "                                      in cons(first(fol), makeSusp(map  to primes(l1)));\n" +
-                           "             ODDNUMS := map oddNums to\n" +
-                           "                           map  to cons(3, makeSusp(map  to (Y(MAPSTREAM))(map i to (i + 2), oddNums())));\n" +
-                           "          in (Y(INITSEG))(((Y(PRIMES))((Y(ODDNUMS))())), 20)";
+                    = "(3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71 73)";
+      final String input =
+          "let susp? := map l to cons?(l) & function?(first(l));\n"
+              + " makeSusp := map f to cons(f, null);\n"
+              + "in let block2 := map x,y to y;\n"
+              + "           fo := map prom to if susp?(prom) then (first(prom))() else prom;\n"
+              + "            Y := map f to\n"
+              + "                   let g := map x to f(x(x));\n"
+              + "                   in g(g);\n"
+              + "   in let MAPSTREAM := map mapStream to\n"
+              + "                          map f,l to let fol := fo(l);\n"
+              + "                                     in if (fol = null) then null\n"
+              + "                                     else cons(f(first(fol)), makeSusp(map  to mapStream(f, rest(fol))));\n"
+              + "             FILTER := map filter to\n"
+              + "                          map p,l to let fol := fo(l);\n"
+              + "                                     in if (fol = null) then null\n"
+              + "                                        else if p(first(fol)) then filter(p, rest(fol))\n"
+              + "                                        else cons(first(fol), makeSusp(map  to filter(p, rest(fol))));\n"
+              + "            divides := map a,b to (((b / a) * a) = b);\n"
+              + "            INITSEG := map initSeg to\n"
+              + "                          map l,n to if (n <= 0) then null\n"
+              + "                                     else let fol := fo(l);\n"
+              + "                                          in cons(first(fol), initSeg(rest(fol), (n - 1)));\n"
+              + "       in let PRIMES := map primes to\n"
+              + "                          map l to let fol := fo(l);\n"
+              + "                                   in let l1 := (Y(FILTER))(map x to divides(first(fol), x), rest(fol));\n"
+              + "                                      in cons(first(fol), makeSusp(map  to primes(l1)));\n"
+              + "             ODDNUMS := map oddNums to\n"
+              + "                           map  to cons(3, makeSusp(map  to (Y(MAPSTREAM))(map i to (i + 2), oddNums())));\n"
+              + "          in (Y(INITSEG))(((Y(PRIMES))((Y(ODDNUMS))())), 20)";
       // valueCheck("fib-value", output, input);//stackoverflow
-      // this.needCheck("fib-need", output, input);
+      this.needCheck("fib-need", output, input);
       // this.nameCheck("fib-name", output, input);
       //this.nameLazyConsCheck("Ycons-name", output, input);
       //this.needLazyConsCheck("Ycons-need", output, input);

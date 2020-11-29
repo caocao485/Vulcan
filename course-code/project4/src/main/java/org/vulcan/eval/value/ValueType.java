@@ -29,5 +29,6 @@ public enum ValueType {
      * ListVal value type
      */
     LIST,
-    LAZY_LIST
+    LAZY_LIST,
+    BOX
 }

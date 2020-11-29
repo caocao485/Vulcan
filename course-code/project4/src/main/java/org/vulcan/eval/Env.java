@@ -1,6 +1,5 @@
 package org.vulcan.eval;
 
-import org.vulcan.eval.value.JamVal;
 import org.vulcan.parse.EvalException;
 import org.vulcan.parse.Variable;
 
@@ -19,14 +18,17 @@ public class Env<T> {
 
     }
 
+    @SuppressWarnings("unchecked")
     private Env(final HashMap<Variable, T> frame, final Env<T> fatherEnv) {
-        this.frame = frame;
+        this.frame =frame;
         this.fatherEnv = fatherEnv;
     }
 
     public static <T> Env<T> extendEnv(final HashMap<Variable, T> frame, final Env<T> fatherEnv) {
         return new Env<>(frame, fatherEnv);
     }
+
+
 
     /**
      * // TODO: 2020/11/23
@@ -36,6 +38,7 @@ public class Env<T> {
     public void setValueByVar(final Variable var, final T value) {
 
     }
+
 
     public boolean hasVariable(Variable var){
         if(this.frame != null && this.frame.containsKey(var)){

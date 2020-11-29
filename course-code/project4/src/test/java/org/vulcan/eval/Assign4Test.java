@@ -7,9 +7,9 @@ import org.vulcan.parse.ParseException;
 
 import java.io.*;
 
-public class Assign3Test extends TestCase {
+public class Assign4Test extends TestCase {
 
-    public Assign3Test (String name) {
+    public Assign4Test (String name) {
         super(name);
     }
 
@@ -86,17 +86,8 @@ public class Assign3Test extends TestCase {
         needNeedCheck(name, answer, program);
     }
 
-    private void noValueConsCheck(String name, String answer, String program) {
-        valueNameCheck(name, answer, program);
-        valueNeedCheck(name, answer, program);
-        nameNameCheck(name, answer, program);
-        nameNeedCheck(name, answer, program);
-        needNameCheck(name, answer, program);
-        needNeedCheck(name, answer, program);
-    }
-
     private void needCheck(String name, String answer, String program) {
-        needNameCheck(name, answer, program);
+        needValueCheck(name, answer, program);
         needNeedCheck(name, answer, program);
     }
 
@@ -110,9 +101,7 @@ public class Assign3Test extends TestCase {
         needNeedCheck(name, answer, program);
     }
 
-    public void testSyntaxExceptionExists() {
-        new SyntaxException("Is it defined?");
-    } //end of func
+
 
     public void testNumberP() {
         try {
@@ -212,133 +201,94 @@ public class Assign3Test extends TestCase {
         }
     } //end of func
 
-    public void testFreeVariable() {
+
+    public void testEmptyBlock() {
         try {
             String output = "0";
-            String input = "x";
-            allCheck("free variable", output, input );
+            String input = "{ }";
+            allCheck("emptyBlock", output, input );
 
-            fail("SyntaxException did not throw SyntaxException  exception");
-        } catch (SyntaxException e) {
-           // e.printStackTrace();
-            //fail("SyntaxException threw " + e);
-        }
-    }
-
-    public void testMapDuplicate() {
-        try {
-            String output = "0";
-            String input = "map x,x to (x + y)";
-            allCheck("duplicate elements in map", output, input );
-
-            fail("SyntaxException did not throw SyntaxException  exception");
-        } catch (SyntaxException e) {
-            // e.printStackTrace();
-            //fail("SyntaxException threw " + e);
-        }
-    }
-
-    public void testLetDuplicate() {
-        try {
-            String output = "0";
-            String input = "let x :=  1; x:=6; in (x + x)";
-            allCheck("duplicate elements in let", output, input );
-
-            fail("SyntaxException did not throw SyntaxException  exception");
-        } catch (SyntaxException e) {
-            // e.printStackTrace();
-            //fail("SyntaxException threw " + e);
-        }
-    }
-
-    public void testLetFreeVariables() {
-        try {
-            String output = "0";
-            String input = "let x := 1; in (x + y)";
-            allCheck("free variable in let", output, input );
-
-            fail("SyntaxException did not throw SyntaxException  exception");
-        } catch (SyntaxException e) {
+            fail("emptyBlock did not throw ParseException exception");
+        } catch (ParseException e) {
             //e.printStackTrace();
-            //fail("SyntaxException threw " + e);
-        }
-    }
 
-    public void testMathOperate(){
-        try {
-            String output = "0";
-            String input = "~2";
-            allCheck("expected an arg of type bool", output, input );
-
-            fail("EvalException did not throw EvalException  exception");
-        } catch (EvalException e) {
-            //e.printStackTrace();
-            //fail("SyntaxException threw " + e);
-        }
-    }
-
-    public void testConsEqualityOnes(){
-        try {
-            String output = "true";
-            String input = "let ones := cons(1, ones); in ones = cons(1, ones)";
-            needCheck("expected an arg of type bool", output, input );
-
-
-        } catch (EvalException e) {
-            //e.printStackTrace();
-            //fail("SyntaxException threw " + e);
-        }
-    }
-
-    public void testConsEqualityOnesZero(){
-        try {
-            String output = "false";
-      String input =
-          "let xs := cons(0, xs);\n" + "    ys := cons(0, cons(0, null));\n" + "in xs = ys";
-            noValueConsCheck("expected an arg of type bool", output, input );
-
-
-        } catch (EvalException e) {
+        } catch (Exception e) {
             e.printStackTrace();
-            //fail("SyntaxException threw " + e);
+            fail("emptyBlock threw " + e);
         }
-    }
+    } //end of func
 
-    public void testConsEqualityOnesNull(){
+
+    public void testBlock() {
         try {
-            String output = "true";
-      String input = "let xs := cons(1, 2);\n" + "    ys := cons(3, null);\n" + "in xs != ys";
-            noValueConsCheck("expected an arg of type bool", output, input );
+            String output = "1";
+            String input = "{3; 2; 1}";
+            allCheck("block", output, input );
 
-
-        } catch (EvalException e) {
-            //e.printStackTrace();
-            //fail("SyntaxException threw " + e);
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail("block threw " + e);
         }
-    }
+    } //end of func
 
-    public void testCountUp(){
+
+    public void testDupVar() {
         try {
-            String output = "55";
-      String input =
-          "let Ycons := map F to let g := map x to cons(first(F(x(x))),rest(F(x(x)))); in\n"
-              + "g(g);\n"
-              + "Yv := map F to let g := map x to map y to (F(x(x)))(y); in g(g);\n"
-              + "in let sum := Yv(map s to map l to map k to if k = 0 then 0\n"
-              + "else first(l) + (s(rest(l)))(k-1));\n"
-              + "countup := Yv(map cu to map k to cons(k, cu(k+1)));\n"
-              + "in (sum(countup(1)))(10)";
-            noValueConsCheck("expected an arg of type bool", output, input );
+            String output = "ha!";
+            String input = "let x:=3; x:=4; in x";
+            allCheck("dupVar", output, input );
 
-
-        } catch (EvalException e) {
+            fail("dupVar did not throw SyntaxException exception");
+        } catch (SyntaxException e) {
             //e.printStackTrace();
-            //fail("SyntaxException threw " + e);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail("dupVar threw " + e);
         }
-    }
+    } //end of func
+
+
+    public void testRefApp() {
+        try {
+            String output = "(ref 17)";
+            String input = "let x := ref 10; in {x <- 17; x}";
+            noNameCheck("refApp", output, input );
+            needNeedCheck("refApp", output, input );
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail("refApp threw " + e);
+        }
+    } //end of func
+
+
+    public void testRefref() {
+        try {
+            String output = "(ref (ref 4))";
+            String input = "let x:= ref 4; y:= ref x; in y";
+            allCheck("refref", output, input );
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail("refref threw " + e);
+        }
+    } //end of func
+
+
+    public void testBangApp() {
+        try {
+            String output = "10";
+            String input = "let x := ref 10; in !x";
+            allCheck("bangApp", output, input );
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail("bangApp threw " + e);
+        }
+    } //end of func
+
 
 }
-
-
 
 

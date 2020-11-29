@@ -68,7 +68,7 @@ public class OtherCallVisitor implements AstVisitor<JamVal> {
   public JamVal forVariable(final Variable v) {
     final JamVal value = this.env.lookup(v);
     if (value == null) {
-      throw new EvalException(v, "free variable");
+      throw new EvalException(v, " free variable");
     }
     return value;
   }
@@ -106,6 +106,14 @@ public class OtherCallVisitor implements AstVisitor<JamVal> {
           throw new EvalException(u, "arg is not number");
         } else {
           return new NumVal(-((NumVal) num).getValue());
+        }
+      case "ref":
+        return new Box(num);
+      case "!":
+        if (!(num instanceof Box)) {
+          throw new EvalException(u, "arg is not a box");
+        } else {
+          return ((Box)num).getValue();
         }
       default:
         throw new EvalException(u, "error unop expression");
@@ -161,6 +169,12 @@ public class OtherCallVisitor implements AstVisitor<JamVal> {
           }
           return arg2Value;
         }
+      case "<-":
+        if(!(arg1Value instanceof Box)){
+          throw new EvalException(arg1Value,"<- expected an arg of type box, but got " + arg1Value);
+        }
+        arg2Value =   OtherCallVisitor.forceEval(b.getArg2().accept(this));
+        return ((Box)arg1Value).setBox(arg2Value);
       default:
         arg2Value = OtherCallVisitor.forceEval(b.getArg2().accept(this));
         if (!(arg1Value instanceof NumVal) | !(arg2Value instanceof NumVal)) {
@@ -227,6 +241,13 @@ public class OtherCallVisitor implements AstVisitor<JamVal> {
         throw new EvalException(a, "arg2 are not a list");
       }
       return new ConsVal(arg1, (ListVal) arg2);
+    }
+    if ("ref?".equals(rator.getFunValue())){
+      if (a.getArgs().length != 1) {
+        throw new EvalException(a, "error number of arguments");
+      }
+      final JamVal arg = forceEval(a.getArgs()[0].accept(this));
+      return (arg instanceof Box)?TRUE_VALUE : FALSE_VALUE;
     }
     if (a.getArgs().length != 1) {
       throw new EvalException(a, "error number of arguments");
@@ -342,6 +363,19 @@ public class OtherCallVisitor implements AstVisitor<JamVal> {
               shouldCached));
     }
     final JamVal result = letAST.getBody().accept(newVisitor);
+    return result;
+  }
+
+  @Override
+  public JamVal forBlock(Block b) {
+    JamVal result = VOID;
+    Ast[] states = b.getStates();
+    for(int i=0;i < states.length;i++) {
+      if(i == states.length - 1){
+        result = forceEval(states[i].accept(this));
+      }
+      forceEval(states[i].accept(this));
+    }
     return result;
   }
 }

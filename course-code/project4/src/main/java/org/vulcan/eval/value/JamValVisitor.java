@@ -53,4 +53,7 @@ public interface JamValVisitor<T> {
 
     T forLazyConVal(LazyConsVal v);
 
+    T forBox(Box v);
+
+
 }

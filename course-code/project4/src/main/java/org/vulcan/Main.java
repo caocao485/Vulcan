@@ -4,6 +4,7 @@ import org.vulcan.eval.Interpreter;
 
 import java.io.StringReader;
 import java.util.Arrays;
+import java.util.Scanner;
 import java.util.function.Function;
 
 /**
@@ -16,38 +17,24 @@ public class Main {
 
     public static void main(String[] argv) {
     String exp =
-        "let susp? := map l to cons?(l) & function?(first(l));\n"
-            + " makeSusp := map f to cons(f, null);\n"
-            + "in let block2 := map x,y to y;\n"
-            + "           fo := map prom to if susp?(prom) then (first(prom))() else prom;\n"
-            + "            Y := map f to\n"
-            + "                   let g := map x to f(x(x));\n"
-            + "                   in g(g);\n"
-            + "   in let MAPSTREAM := map mapStream to\n"
-            + "                          map f,l to let fol := fo(l);\n"
-            + "                                     in if (fol = null) then null\n"
-            + "                                     else cons(f(first(fol)), makeSusp(map  to mapStream(f, rest(fol))));\n"
-            + "             FILTER := map filter to\n"
-            + "                          map p,l to let fol := fo(l);\n"
-            + "                                     in if (fol = null) then null\n"
-            + "                                        else if p(first(fol)) then filter(p, rest(fol))\n"
-            + "                                        else cons(first(fol), makeSusp(map  to filter(p, rest(fol))));\n"
-            + "            divides := map a,b to (((b / a) * a) = b);\n"
-            + "            INITSEG := map initSeg to\n"
-            + "                          map l,n to if (n <= 0) then null\n"
-            + "                                     else let fol := fo(l);\n"
-            + "                                          in cons(first(fol), initSeg(rest(fol), (n - 1)));\n"
-            + "       in let PRIMES := map primes to\n"
-            + "                          map l to let fol := fo(l);\n"
-            + "                                   in let l1 := (Y(FILTER))(map x to divides(first(fol), x), rest(fol));\n"
-            + "                                      in cons(first(fol), makeSusp(map  to primes(l1)));\n"
-            + "             ODDNUMS := map oddNums to\n"
-            + "                           map  to cons(3, makeSusp(map  to (Y(MAPSTREAM))(map i to (i + 2), oddNums())));\n"
-            + "          in (Y(INITSEG))(((Y(PRIMES))((Y(ODDNUMS))())), 20)";
+        "let x := ref 10; y := ref 10; in x = y";
         final Interpreter interp = new Interpreter(new StringReader(exp));
         System.out.println("argv = " + interp.callByNameLazyCons().toString());
 
         runY();
+        while(true) {
+            try{
+                System.out.print("> ");
+                Scanner in = new Scanner(System.in);
+                final Interpreter interp1 = new Interpreter(new StringReader(in.nextLine()));
+                System.out.println("<=> " + interp1.needNeed().toString());
+            }catch (Exception e) {
+                e.printStackTrace();
+                continue;
+            }
+
+        }
+
     }
 
     public static void runY() {

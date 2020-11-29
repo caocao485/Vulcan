@@ -37,7 +37,7 @@ public class CheckAstVisitor implements AstVisitor<JamVal> {
     @Override
     public JamVal forVariable(Variable v) {
         if(!env.hasVariable(v)){
-            throw new SyntaxException("variable: " + v + "is a free variable");
+            throw new SyntaxException("variable: " + v + " is a free variable");
         }
         return null;
     }
@@ -116,6 +116,14 @@ public class CheckAstVisitor implements AstVisitor<JamVal> {
             def.rhs().accept(newChecker);
         }
         l.getBody().accept(newChecker);
+        return null;
+    }
+
+    @Override
+    public JamVal forBlock(Block b) {
+        for (Ast ast : b.getStates() ){
+            ast.accept(this);
+        }
         return null;
     }
 }

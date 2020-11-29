@@ -1,6 +1,7 @@
 package org.vulcan.parse;
 
 import java.io.*;
+import java.util.Arrays;
 import java.util.HashMap;
 
 /**
@@ -730,6 +731,31 @@ class App implements Ast {
     }
 }
 
+class Block implements Ast {
+    private final Ast[] states;
+
+    Block(Ast[] states) {
+        this.states = states;
+    }
+
+    public Ast[] getStates() {
+        return states;
+    }
+
+    @Override
+    public String toString() {
+        return "Block{" +
+                "states=" + Arrays.toString(states) +
+                '}';
+    }
+
+    @Override
+    public <T> T accept(AstVisitor<T> v) {
+        return v.forBlock(this);
+    }
+}
+
+
 /**
  * Jam if expression class
  */
@@ -1108,8 +1134,8 @@ public class Lexer extends StreamTokenizer {
                 return LeftBrack.ONLY;
             case ']':
                 return RightBrack.ONLY;
-            // case '{': return org.vulcan.parse.LeftBrace.ONLY;
-            // case '}': return org.vulcan.parse.RightBrace.ONLY;
+            case '{': return LeftBrace.ONLY;
+            case '}': return RightBrace.ONLY;
             case ',':
                 return Comma.ONLY;
             case ';':
@@ -1130,7 +1156,7 @@ public class Lexer extends StreamTokenizer {
             case '<':
                 tokenType = this.getToken();
                 if (tokenType == '=') return this.wordTable.get("<=");
-                // if (tokenType == '-') return wordTable.get("<-");
+                if (tokenType == '-') return wordTable.get("<-");
               this.pushBack();
                 return this.wordTable.get("<");
             case '>':
@@ -1141,13 +1167,9 @@ public class Lexer extends StreamTokenizer {
             case '!':
                 tokenType = this.getToken();
                 if (tokenType == '=') return this.wordTable.get("!=");
-                else throw new ParseException("!" + ((char) tokenType) + " is not a legal token");
-
-                /*
-                 * // this alternate else clause will be added in later assignments
-                 * pushBack();
-                 * return wordTable.get("!");
-                 */
+                // this alternate else clause will be added in later assignments
+                 this.pushBack();
+                 return wordTable.get("!");
             case '&':
                 return this.wordTable.get("&");
             case '|':
@@ -1193,6 +1215,7 @@ public class Lexer extends StreamTokenizer {
       this.wordTable.put("-", new Op("-", true, true));
       this.wordTable.put("~", new Op("~", true, false));
       this.wordTable.put("!", new Op("!", true, false));
+      this.wordTable.put("ref",new Op("ref", true, false));
 
       this.wordTable.put("*", new Op("*"));
       this.wordTable.put("/", new Op("/"));
@@ -1224,7 +1247,7 @@ public class Lexer extends StreamTokenizer {
 
       this.wordTable.put("number?", new PrimFun("number?"));
       this.wordTable.put("function?", new PrimFun("function?"));
-        // wordTable.put("ref?",      new org.vulcan.parse.PrimFun("ref?"));
+      this.wordTable.put("ref?",new PrimFun("ref?"));
       this.wordTable.put("list?", new PrimFun("list?"));
       this.wordTable.put("null?", new PrimFun("null?"));
       this.wordTable.put("cons?", new PrimFun("cons?"));

@@ -92,4 +92,6 @@ public interface AstVisitor<T> {
      * @return the t
      */
     T forLet(Let l);
+
+    T forBlock(Block b);
 }

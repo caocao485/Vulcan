@@ -55,7 +55,7 @@ public class CallByValueVisitor implements AstVisitor<JamVal> {
             if (b.getValue() == 0) {
                 throw new EvalException(b, "denominator should not be zero");
             }
-            return new NumVal(a.getValue() * b.getValue());
+            return new NumVal(a.getValue() / b.getValue());
         });
         binaryOpertors.put(">", (NumVal a, NumVal b) -> {
             return (a.getValue() > b.getValue()) ? TRUE_VALUE : FALSE_VALUE;
@@ -90,7 +90,7 @@ public class CallByValueVisitor implements AstVisitor<JamVal> {
     public JamVal forVariable(final Variable v) {
         final JamVal value = this.env.lookup(v);
         if (value == null) {
-            throw new EvalException(v, "free variable");
+            throw new EvalException(v, " free variable");
         }
         return value;
     }
@@ -101,6 +101,7 @@ public class CallByValueVisitor implements AstVisitor<JamVal> {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public JamVal forUnOpApp(final UnOpApp u) {
         final Op op = u.getRator();
         if (!op.isUnOp()) {
@@ -128,6 +129,14 @@ public class CallByValueVisitor implements AstVisitor<JamVal> {
                     throw new EvalException(u, "arg is not number");
                 } else {
                     return new NumVal(-((NumVal) num).getValue());
+                }
+            case "ref":
+                return new Box(num);
+            case "!":
+                if (!(num instanceof Box)) {
+                    throw new EvalException(u, "arg is not a box");
+                } else {
+                    return ((Box)num).getValue();
                 }
             default:
                 throw new EvalException(u, "error unop expression");
@@ -188,6 +197,12 @@ public class CallByValueVisitor implements AstVisitor<JamVal> {
                     }
                     return arg2Value;
                 }
+            case "<-":
+                if(!(arg1Value instanceof Box)){
+                    throw new EvalException(arg1Value,"<- expected an arg of type box, but got " + arg1Value);
+                }
+                arg2Value =  b.getArg2().accept(this);
+                return ((Box)arg1Value).setBox(arg2Value);
             default:
                 arg2Value = b.getArg2().accept(this);
                 if (!(arg1Value instanceof NumVal)
@@ -213,22 +228,18 @@ public class CallByValueVisitor implements AstVisitor<JamVal> {
         if (rator instanceof PrimFunVal) {
             return this.forPrimApp((PrimFunVal) rator, a);
         } else {
-            return this.forClosureVal((ClosureVal) rator, a);
+            return this.forClosureVal((ClosureVal<JamVal>) rator, a);
         }
     }
 
 
-    private JamVal forClosureVal(final ClosureVal rator, final App a) {
+    private JamVal forClosureVal(final ClosureVal<JamVal> rator, final App a) {
         final Variable[] params = rator.getVars();
         final Ast[] args = a.getArgs();
         if (params.length != args.length) {
             throw new EvalException(a, "the number of arguments are not match");
         }
         final HashMap<Variable, JamVal> frame = new HashMap<>();
-        //for recursion definition
-        for (int i = 0; i < params.length; i++) {
-            frame.put(params[i], VOID);
-        }
 
         for (int i = 0; i < params.length; i++) {
             frame.put(params[i], args[i].accept(this));
@@ -253,6 +264,13 @@ public class CallByValueVisitor implements AstVisitor<JamVal> {
                 throw new EvalException(a, "arg2 are not a list");
             }
             return new ConsVal(arg1, (ListVal) arg2);
+        }
+        if ("ref?".equals(rator.getFunValue())){
+            if (a.getArgs().length != 1) {
+                throw new EvalException(a, "error number of arguments");
+            }
+            final JamVal arg = a.getArgs()[0].accept(this);
+            return (arg instanceof Box)?TRUE_VALUE : FALSE_VALUE;
         }
         if (a.getArgs().length != 1) {
             throw new EvalException(a, "error number of arguments");
@@ -347,16 +365,30 @@ public class CallByValueVisitor implements AstVisitor<JamVal> {
     @Override
     public JamVal forLet(final Let letAst) {
         final HashMap<Variable, JamVal> frame = new HashMap<>();
-        final CallByValueVisitor newVisitor =
-                new CallByValueVisitor(Env.extendEnv(frame, env), isLazyCons,shouldListCached);
         for (final Def def : letAst.getDefs()) {
             frame.put(def.lhs(), VOID);
         }
+        final CallByValueVisitor newVisitor =
+                new CallByValueVisitor(Env.extendEnv(frame, env), isLazyCons,shouldListCached);
+
         for (final Def def : letAst.getDefs()) {
             frame.put(def.lhs(), def.rhs().accept(newVisitor));
         }
 
         final JamVal result = letAst.getBody().accept(newVisitor);
+        return result;
+    }
+
+    @Override
+    public JamVal forBlock(Block b) {
+        JamVal result = VOID;
+        Ast[] states = b.getStates();
+        for(int i=0;i < states.length;i++) {
+            if(i == states.length - 1){
+                result = states[i].accept(this);
+            }
+            states[i].accept(this);
+        }
         return result;
     }
 }
