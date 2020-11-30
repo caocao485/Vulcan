@@ -96,12 +96,15 @@ public class Parser {
         }
         if (peek == MAP) {
             this.in.readToken();
-            final Variable[] vars = this.parseIdList();
+            final ArrayList<Boolean> isRefsList = new ArrayList<>();
+            final Variable[] vars = this.parseIdList(isRefsList);
             if (this.in.readToken() != TO) {
                 throw new ParseException("missing TO keyword");
             }
             final Ast body = this.parseExp();
-            return new Map(vars, body);
+            return new Map(vars,
+                    isRefsList.toArray(new Boolean[isRefsList.size()]),
+                    body);
         }
         if(peek == LeftBrace.ONLY){
             this.in.readToken();
@@ -235,7 +238,12 @@ public class Parser {
      * <def> ::=  <id> := <exp> ;
      */
     private Def parseDef() {
-        final Token lhs = this.in.readToken();
+        Token lhs = this.in.readToken();
+        boolean isRef = false;
+        if(lhs == REF){
+            isRef = true;
+            lhs = this.in.readToken();
+        }
         if (lhs.getType() != VAR) {
             this.error(lhs, "error definition expression");
         }
@@ -248,7 +256,8 @@ public class Parser {
         if (semicolon != SemiColon.ONLY) {
             this.error(semicolon, "missing semicolon ';'");
         }
-        return new Def((Variable) lhs, rhs);
+        return isRef?(new Def((Variable) lhs, rhs,true)):
+                (new Def((Variable) lhs, rhs));
     }
 
     /**
@@ -256,24 +265,38 @@ public class Parser {
      * <idList> ::=  <id> {,<id>}?
      * for map method
      */
-    private Variable[] parseIdList() {
+    private Variable[] parseIdList(ArrayList<Boolean> isRefsList) {
         final ArrayList<Variable> idList = new ArrayList<>();
+        boolean isRef = false;
         //map to 前探
         if (this.in.peek() == TO) {
             return idList.toArray(new Variable[idList.size()]);
         }
         Token id = this.in.readToken();
+        if(id == REF){
+            isRef = true;
+            id = this.in.readToken();
+        }
         if (id.getType() != VAR) {
             this.error(id, "error Variable type");
         }
         idList.add((Variable) id);
+        isRefsList.add(isRef);
+        //重置
+        isRef = false;
         while (this.in.peek() == Comma.ONLY) {
             this.in.readToken();
             id = this.in.readToken();
+            if(id == REF){
+                isRef = true;
+                id = this.in.readToken();
+            }
             if (id.getType() != VAR) {
                 this.error(id, "error Variable type");
             }
             idList.add((Variable) id);
+            isRefsList.add(isRef);
+            isRef = false;
         }
         return idList.toArray(new Variable[idList.size()]);
     }

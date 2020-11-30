@@ -37,6 +37,7 @@ public class CallByValueVisitor implements AstVisitor<JamVal> {
         this.initEnv();
     }
 
+
     private void initEnv() {
         extractBinaryOperator(this.binaryOpertors);
     }
@@ -69,6 +70,14 @@ public class CallByValueVisitor implements AstVisitor<JamVal> {
         binaryOpertors.put("<=", (NumVal a, NumVal b) -> {
             return (a.getValue() <= b.getValue()) ? TRUE_VALUE : FALSE_VALUE;
         });
+    }
+
+    public static JamVal forceDereference(JamVal value){
+        JamVal result = value;
+        while(result instanceof Box){
+            result = ((Box)result).getValue();
+        }
+        return result;
     }
 
     @Override
@@ -107,7 +116,7 @@ public class CallByValueVisitor implements AstVisitor<JamVal> {
         if (!op.isUnOp()) {
             throw new EvalException(u, "error unop");
         }
-        final JamVal num = u.getArg().accept(this);
+        final JamVal num = forceDereference(u.getArg().accept(this));
         switch (op.getSymbol()) {
             case "~":
                 if(!(num instanceof BoolVal)){
@@ -130,14 +139,6 @@ public class CallByValueVisitor implements AstVisitor<JamVal> {
                 } else {
                     return new NumVal(-((NumVal) num).getValue());
                 }
-            case "ref":
-                return new Box(num);
-            case "!":
-                if (!(num instanceof Box)) {
-                    throw new EvalException(u, "arg is not a box");
-                } else {
-                    return ((Box)num).getValue();
-                }
             default:
                 throw new EvalException(u, "error unop expression");
         }
@@ -149,11 +150,20 @@ public class CallByValueVisitor implements AstVisitor<JamVal> {
         if (!op.isBinOp()) {
             throw new EvalException(b, "error Binop operator");
         }
-        final JamVal arg1Value = b.getArg1().accept(this);
+        JamVal arg1Value = b.getArg1().accept(this);
         final JamVal arg2Value;
+        if("<-".equals(op.getSymbol())){
+            if(!(arg1Value instanceof Box)){
+            throw new EvalException(arg1Value,"<- expected an arg of type box, but got " + arg1Value);
+            }
+            arg2Value =  forceDereference(b.getArg2().accept(this));
+            return ((Box)arg1Value).setBox(arg2Value);
+        }
+        arg1Value = forceDereference(arg1Value);
+
         switch (op.getSymbol()) {
             case "=":
-                arg2Value = b.getArg2().accept(this);
+                arg2Value = forceDereference(b.getArg2().accept(this));
                 if ((arg1Value instanceof ClosureVal) |
                         (arg2Value instanceof ClosureVal)) {
                     return arg1Value == arg2Value ?
@@ -163,7 +173,7 @@ public class CallByValueVisitor implements AstVisitor<JamVal> {
                             TRUE_VALUE : FALSE_VALUE;
                 }
             case "!=":
-                arg2Value = b.getArg2().accept(this);
+                arg2Value = forceDereference(b.getArg2().accept(this));
                 if ((arg1Value instanceof ClosureVal) |
                         (arg2Value instanceof ClosureVal)) {
                     return arg1Value != arg2Value ? FALSE_VALUE : TRUE_VALUE;
@@ -176,7 +186,7 @@ public class CallByValueVisitor implements AstVisitor<JamVal> {
                     throw new EvalException(arg1Value,"~ expected an arg of type bool, but got " + arg1Value);
                 }
                 if (arg1Value != FALSE_VALUE) {
-                    arg2Value =  b.getArg2().accept(this);
+                    arg2Value =  forceDereference(b.getArg2().accept(this));
                     if(!(arg2Value instanceof BoolVal)){
                         throw new EvalException(arg2Value,"~ expected an arg of type bool, but got " + arg2Value);
                     }
@@ -191,20 +201,14 @@ public class CallByValueVisitor implements AstVisitor<JamVal> {
                 if (arg1Value != FALSE_VALUE) {
                     return arg1Value;
                 } else {
-                    arg2Value =  b.getArg2().accept(this);
+                    arg2Value =  forceDereference(b.getArg2().accept(this));
                     if(!(arg2Value instanceof BoolVal)){
                         throw new EvalException(arg2Value,"~ expected an arg of type bool, but got " + arg2Value);
                     }
                     return arg2Value;
                 }
-            case "<-":
-                if(!(arg1Value instanceof Box)){
-                    throw new EvalException(arg1Value,"<- expected an arg of type box, but got " + arg1Value);
-                }
-                arg2Value =  b.getArg2().accept(this);
-                return ((Box)arg1Value).setBox(arg2Value);
             default:
-                arg2Value = b.getArg2().accept(this);
+                arg2Value = forceDereference(b.getArg2().accept(this));
                 if (!(arg1Value instanceof NumVal)
                         | !(arg2Value instanceof NumVal)) {
                     throw new EvalException(b, "error arg type");
@@ -235,6 +239,7 @@ public class CallByValueVisitor implements AstVisitor<JamVal> {
 
     private JamVal forClosureVal(final ClosureVal<JamVal> rator, final App a) {
         final Variable[] params = rator.getVars();
+        final Boolean[] isRefs = rator.getIsRefs();
         final Ast[] args = a.getArgs();
         if (params.length != args.length) {
             throw new EvalException(a, "the number of arguments are not match");
@@ -242,7 +247,17 @@ public class CallByValueVisitor implements AstVisitor<JamVal> {
         final HashMap<Variable, JamVal> frame = new HashMap<>();
 
         for (int i = 0; i < params.length; i++) {
-            frame.put(params[i], args[i].accept(this));
+            JamVal arg = args[i].accept(this);
+            if(isRefs[i]){
+                if(arg instanceof Box){
+                    frame.put(params[i], arg);
+                }else{
+                    frame.put(params[i],new Box(arg));
+                }
+            }else{
+                frame.put(params[i], forceDereference(arg));
+            }
+
         }
         final CallByValueVisitor newVisitor =
                 new CallByValueVisitor(Env.extendEnv(frame, rator.getEnv()), isLazyCons,shouldListCached);
@@ -258,24 +273,18 @@ public class CallByValueVisitor implements AstVisitor<JamVal> {
             if (isLazyCons) {
                 return new LazyConsVal(a.getArgs()[0], a.getArgs()[1], this, shouldListCached);
             }
-            final JamVal arg1 = a.getArgs()[0].accept(this);
-            final JamVal arg2 = a.getArgs()[1].accept(this);
+            final JamVal arg1 = forceDereference(a.getArgs()[0].accept(this));
+            final JamVal arg2 = forceDereference(a.getArgs()[1].accept(this));
             if (!(arg2 instanceof ListVal)) {
                 throw new EvalException(a, "arg2 are not a list");
             }
             return new ConsVal(arg1, (ListVal) arg2);
         }
-        if ("ref?".equals(rator.getFunValue())){
-            if (a.getArgs().length != 1) {
-                throw new EvalException(a, "error number of arguments");
-            }
-            final JamVal arg = a.getArgs()[0].accept(this);
-            return (arg instanceof Box)?TRUE_VALUE : FALSE_VALUE;
-        }
+
         if (a.getArgs().length != 1) {
             throw new EvalException(a, "error number of arguments");
         }
-        return this.forOneArgApp(rator, a.getArgs()[0].accept(this), a);
+        return this.forOneArgApp(rator, forceDereference(a.getArgs()[0].accept(this)), a);
 
     }
 
@@ -349,12 +358,12 @@ public class CallByValueVisitor implements AstVisitor<JamVal> {
 
     @Override
     public JamVal forMap(final Map m) {
-        return new ClosureVal<>(m.getVars(), m.getBody(), env);
+        return new ClosureVal<>(m.getVars(), m.getIsRefList(),m.getBody(), env);
     }
 
     @Override
     public JamVal forIf(final If i) {
-        final JamVal testV = i.getTest().accept(this);
+        final JamVal testV = forceDereference(i.getTest().accept(this));
         if (!(testV instanceof BoolVal)) {
             throw new EvalException(i, "test result are not BoolVal");
         }
@@ -372,7 +381,17 @@ public class CallByValueVisitor implements AstVisitor<JamVal> {
                 new CallByValueVisitor(Env.extendEnv(frame, env), isLazyCons,shouldListCached);
 
         for (final Def def : letAst.getDefs()) {
-            frame.put(def.lhs(), def.rhs().accept(newVisitor));
+            JamVal rhs = def.rhs().accept(newVisitor);
+            if(def.isRef() ){
+                if(rhs instanceof Box){
+                    frame.put(def.lhs(), rhs);
+                }else{
+                    frame.put(def.lhs(), new Box(rhs));
+                }
+            }else {
+                frame.put(def.lhs(), forceDereference(rhs));
+
+            }
         }
 
         final JamVal result = letAst.getBody().accept(newVisitor);

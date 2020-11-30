@@ -62,7 +62,7 @@ public class Interpreter {
       return forceEval(this.astResult.accept(new OtherCallVisitor(new Env<>(), false,true)));
   }
   public JamVal needNeed(){
-      return forceEval(this.astResult.accept(new OtherCallVisitor(new Env<>(), false,true)));
+      return forceEval(this.astResult.accept(new OtherCallVisitor(new Env<>(), true,true)));
   }
 
    public JamVal callByValue() {

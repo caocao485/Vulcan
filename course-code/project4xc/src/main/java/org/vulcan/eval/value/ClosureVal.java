@@ -12,6 +12,7 @@ import java.util.Objects;
  */
 public class ClosureVal<T extends JamVal> implements JamVal {
     private Variable[] vars;
+    private Boolean[] isRefs;
     private Ast body;
     private Env<T> env;
 
@@ -20,6 +21,15 @@ public class ClosureVal<T extends JamVal> implements JamVal {
         this.vars = vars;
         this.body = body;
         this.env = env;
+        this.isRefs = new Boolean[vars.length];
+    }
+
+    public ClosureVal(final Variable[] vars, final Boolean[] isRefs,final Ast body, final Env<T> env) {
+
+        this.vars = vars;
+        this.body = body;
+        this.env = env;
+        this.isRefs = isRefs;
     }
 
     public Variable[] getVars() {
@@ -55,12 +65,12 @@ public class ClosureVal<T extends JamVal> implements JamVal {
         return ValueType.CLOSURE;
     }
 
-    @Override
-    public String toString() {
-        return "ClosureVal{" +
-                "vars=" + Arrays.toString(vars) +
-                ", body=" + body +
-                '}';
+    public Boolean[] getIsRefs() {
+        return isRefs;
+    }
+
+    public void setIsRefs(Boolean[] isRefs) {
+        this.isRefs = isRefs;
     }
 
     @Override
@@ -73,6 +83,7 @@ public class ClosureVal<T extends JamVal> implements JamVal {
         }
         ClosureVal<?> that = (ClosureVal<?>) o;
         return Arrays.equals(vars, that.vars) &&
+                Arrays.equals(isRefs, that.isRefs) &&
                 Objects.equals(body, that.body) &&
                 Objects.equals(env, that.env);
     }
@@ -81,6 +92,7 @@ public class ClosureVal<T extends JamVal> implements JamVal {
     public int hashCode() {
         int result = Objects.hash(body, env);
         result = 31 * result + Arrays.hashCode(vars);
+        result = 31 * result + Arrays.hashCode(isRefs);
         return result;
     }
 }

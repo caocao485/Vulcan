@@ -641,17 +641,19 @@ class BinOpApp implements Ast {
  */
 class Map implements Ast {
     private final Variable[] vars;
+    private final Boolean[] isRefList;
     private final Ast body;
 
     /**
      * Instantiates a new org.vulcan.parse.Map.
-     *
-     * @param v the v
+     *  @param v the v
+     * @param isRefList
      * @param b the b
      */
-    Map(final Variable[] v, final Ast b) {
+    Map(final Variable[] v, Boolean[] isRefList, final Ast b) {
       this.vars = v;
-      this.body = b;
+        this.isRefList = isRefList;
+        this.body = b;
     }
 
     /**
@@ -670,6 +672,10 @@ class Map implements Ast {
      */
     public Ast getBody() {
         return this.body;
+    }
+
+    public Boolean[] getIsRefList() {
+        return isRefList;
     }
 
     @Override
@@ -867,6 +873,7 @@ class Let implements Ast {
 class Def {
     private final Variable lhs;
     private final Ast rhs;
+    private final boolean isRef;
 
     /**
      * Instantiates a new org.vulcan.parse.Def.
@@ -877,6 +884,13 @@ class Def {
     Def(final Variable l, final Ast r) {
       this.lhs = l;
       this.rhs = r;
+      this.isRef = false;
+    }
+
+    public Def(Variable lhs, Ast rhs, boolean isRef) {
+        this.lhs = lhs;
+        this.rhs = rhs;
+        this.isRef = isRef;
     }
 
     /**
@@ -895,6 +909,10 @@ class Def {
      */
     public Ast rhs() {
         return this.rhs;
+    }
+
+    public boolean isRef() {
+        return isRef;
     }
 
     public String toString() {
@@ -993,6 +1011,11 @@ public class Lexer extends StreamTokenizer {
      * The constant BIND.
      */
     public static final KeyWord BIND = new KeyWord(":=");
+
+    /**
+     * The constant REF.
+     */
+    public static final KeyWord REF  = new KeyWord("ref");
 
     /**
      * The Word table.
@@ -1167,9 +1190,8 @@ public class Lexer extends StreamTokenizer {
             case '!':
                 tokenType = this.getToken();
                 if (tokenType == '=') return this.wordTable.get("!=");
-                // this alternate else clause will be added in later assignments
-                 this.pushBack();
-                 return wordTable.get("!");
+                this.pushBack();
+                throw new ParseException("`!' is not a legalken");
             case '&':
                 return this.wordTable.get("&");
             case '|':
@@ -1215,7 +1237,6 @@ public class Lexer extends StreamTokenizer {
       this.wordTable.put("-", new Op("-", true, true));
       this.wordTable.put("~", new Op("~", true, false));
       this.wordTable.put("!", new Op("!", true, false));
-      this.wordTable.put("ref",new Op("ref", true, false));
 
       this.wordTable.put("*", new Op("*"));
       this.wordTable.put("/", new Op("/"));
@@ -1239,6 +1260,7 @@ public class Lexer extends StreamTokenizer {
       this.wordTable.put("map", Lexer.MAP);
       this.wordTable.put("to", Lexer.TO);
       this.wordTable.put(":=", Lexer.BIND);
+      this.wordTable.put("ref",Lexer.REF);
 
 
         // Install primitive functions
@@ -1247,7 +1269,7 @@ public class Lexer extends StreamTokenizer {
 
       this.wordTable.put("number?", new PrimFun("number?"));
       this.wordTable.put("function?", new PrimFun("function?"));
-      this.wordTable.put("ref?",new PrimFun("ref?"));
+      //this.wordTable.put("ref?",new PrimFun("ref?"));
       this.wordTable.put("list?", new PrimFun("list?"));
       this.wordTable.put("null?", new PrimFun("null?"));
       this.wordTable.put("cons?", new PrimFun("cons?"));

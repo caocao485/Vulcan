@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 
+import static org.vulcan.parse.CallByValueVisitor.forceDereference;
 import static org.vulcan.parse.OtherCallVisitor.forceEval;
 
 /**
@@ -31,7 +32,7 @@ public class Interpreter {
     }
 
     public JamVal valueValue(){
-        return this.astResult.accept(new CallByValueVisitor(new Env<>()));
+        return forceDereference(this.astResult.accept(new CallByValueVisitor(new Env<>())));
     }
 
     public JamVal nameValue(){

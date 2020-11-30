@@ -55,7 +55,7 @@ public class CallByValueVisitor implements AstVisitor<JamVal> {
             if (b.getValue() == 0) {
                 throw new EvalException(b, "denominator should not be zero");
             }
-            return new NumVal(a.getValue() * b.getValue());
+            return new NumVal(a.getValue() / b.getValue());
         });
         binaryOpertors.put(">", (NumVal a, NumVal b) -> {
             return (a.getValue() > b.getValue()) ? TRUE_VALUE : FALSE_VALUE;
