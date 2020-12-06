@@ -1,0 +1,19 @@
+plugins {
+    id 'java'
+}
+
+group 'org.org.vulcan'
+version '1.0-SNAPSHOT'
+
+sourceCompatibility = 1.12
+
+repositories {
+    mavenCentral()
+}
+
+
+
+dependencies {
+    testImplementation('junit:junit:4.13')
+    implementation 'junit:junit:4.12'
+}
