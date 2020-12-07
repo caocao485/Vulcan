@@ -1,5 +1,7 @@
 package org.vulcan.parse;
 
+import org.vulcan.TypeChecker.*;
+
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Scanner;
@@ -96,12 +98,13 @@ public class Parser {
         }
         if (peek == MAP) {
             this.in.readToken();
-            final Variable[] vars = this.parseIdList();
+            final ArrayList<JType> jTypeList = new ArrayList<>();
+            final Variable[] vars = this.parseIdList(jTypeList);
             if (this.in.readToken() != TO) {
                 throw new ParseException("missing TO keyword");
             }
             final Ast body = this.parseExp();
-            return new Map(vars, body);
+            return new TypedMap(vars, jTypeList.toArray(new JType[jTypeList.size()]),body);
         }
         if(peek == LeftBrace.ONLY){
             this.in.readToken();
@@ -154,12 +157,25 @@ public class Parser {
             }
             return new UnOpApp(op, this.parseTerm(this.in.readToken()));
         }
-
+        if(token instanceof NullConstant){
+            if(this.in.readToken() != TYPE_BIND){
+                this.error(token, "miss TYPE_BIND ");
+            }
+            JType jType = parseJType();
+            return new NullConstant(jType);
+        }
         if (token instanceof Constant) {
             return (Constant) token;
         }
         final Ast factor = this.parseFactor(token);
         final Token next = this.in.peek();
+        if(factor instanceof PrimFun){
+            if(this.in.readToken() !=LeftParen.ONLY) {
+                this.error((PrimFun)factor, "primitive function are not allow in this position");
+            };
+            final Ast[] exps = this.parseArgs();  // including closing paren
+            return new App(factor, exps);
+        }
         if (next == LeftParen.ONLY) {
             this.in.readToken();  // remove next from input stream
             final Ast[] exps = this.parseArgs();  // including closing paren
@@ -239,6 +255,11 @@ public class Parser {
         if (lhs.getType() != VAR) {
             this.error(lhs, "error definition expression");
         }
+
+        if(this.in.readToken() != TYPE_BIND){
+            this.error(lhs, "miss TYPE_BIND ");
+        }
+        JType jType = parseJType();
         final Token keywordBind = this.in.readToken();
         if (keywordBind != BIND) {
             this.error(keywordBind, "missing bind keyword");
@@ -248,7 +269,7 @@ public class Parser {
         if (semicolon != SemiColon.ONLY) {
             this.error(semicolon, "missing semicolon ';'");
         }
-        return new Def((Variable) lhs, rhs);
+        return new TypedDef((Variable)lhs,jType, rhs);
     }
 
     /**
@@ -256,7 +277,7 @@ public class Parser {
      * <idList> ::=  <id> {,<id>}?
      * for map method
      */
-    private Variable[] parseIdList() {
+    private Variable[] parseIdList(ArrayList<JType> jTypeList) {
         final ArrayList<Variable> idList = new ArrayList<>();
         //map to 前探
         if (this.in.peek() == TO) {
@@ -267,6 +288,10 @@ public class Parser {
             this.error(id, "error Variable type");
         }
         idList.add((Variable) id);
+        if(this.in.readToken() != TYPE_BIND){
+            this.error(id, "miss TYPE_BIND ");
+        }
+        jTypeList.add(parseJType());
         while (this.in.peek() == Comma.ONLY) {
             this.in.readToken();
             id = this.in.readToken();
@@ -274,10 +299,68 @@ public class Parser {
                 this.error(id, "error Variable type");
             }
             idList.add((Variable) id);
+            if(this.in.readToken() != TYPE_BIND){
+                this.error(id, "miss TYPE_BIND ");
+            }
+            jTypeList.add(parseJType());
         }
         return idList.toArray(new Variable[idList.size()]);
     }
 
+
+
+    private JType parseJType(){
+        Token readToken = this.in.readToken();
+        if(readToken == TYPE_UNIT){
+            return UnitT.JUNIT_TYPE;
+        }
+        if (readToken == TYPE_INT){
+            return intT.JINT_TYPE;
+        }
+        if (readToken == TYPE_BOOL){
+            return boolT.JBOOL_TYPE;
+        }
+        if(readToken == TYPE_LIST){
+            JType type = parseJType();
+            return new ListT(type);
+        }
+        if(readToken.getType() == OPERATOR && "ref".equals(((Op)readToken).getSymbol())){
+            JType type = parseJType();
+            return new RefT(type);
+        }
+        if(readToken == LeftParen.ONLY){
+            return parseTypeArrow();
+        }
+        error(readToken ," error JType");
+        return null;
+    }
+
+
+    private ArrowT parseTypeArrow(){
+        Token peekToken = this.in.peek();
+        if (peekToken == ARROW){
+            this.in.readToken();
+            JType rangeType = parseJType();
+            if(this.in.readToken() != RightParen.ONLY) {
+                this.error(peekToken, "missing right-paren");
+            }
+            return new ArrowT(new JType[0],rangeType);
+        }
+        final ArrayList<JType> jTypeList = new ArrayList<>();
+        jTypeList.add(parseJType());
+        while (this.in.peek() == Comma.ONLY){
+            this.in.readToken();
+            jTypeList.add(parseJType());
+        }
+        if(this.in.readToken() != ARROW){
+            error(this.in.peek(), " miss arrow");
+        }
+        JType rangeType = parseJType();
+        if(this.in.readToken() != RightParen.ONLY) {
+            this.error(peekToken, "missing right-paren");
+        }
+        return new ArrowT(jTypeList.toArray(new JType[jTypeList.size()]),rangeType);
+    }
 
     private void error(final Token token, final String hintString) {
         throw new ParseException(token + ": " + hintString);

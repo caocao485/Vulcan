@@ -1,5 +1,7 @@
 package org.vulcan.parse;
 
+import org.vulcan.TypeChecker.JType;
+
 import java.io.*;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -18,84 +20,6 @@ interface Term extends Ast {
 interface Constant extends Term {
     @Override
     <T> T accept(AstVisitor<T> v);
-}
-
-/**
- * The enum org.vulcan.parse.Token type.
- */
-enum TokenType {
-    /**
-     * Bool token type.
-     */
-    BOOL,
-    /**
-     * Int token type.
-     */
-    INT,
-    /**
-     * Null token type.
-     */
-    NULL,
-    /**
-     * Prim fun token type.
-     */
-    PRIM_FUN,
-    /**
-     * Variable token type.
-     */
-    VAR,
-    /**
-     * Operator token type.
-     */
-    OPERATOR,
-    /**
-     * Keyword token type.
-     */
-    KEYWORD,
-    /**
-     * Left paren token type.
-     */
-    LEFT_PAREN,
-    /**
-     * Right paren token type.
-     */
-    RIGHT_PAREN,
-    /**
-     * Left brack token type.
-     */
-    LEFT_BRACK,
-    /**
-     * Right brack token type.
-     */
-    RIGHT_BRACK,
-    /**
-     * Left brace token type.
-     */
-    LEFT_BRACE,
-    /**
-     * Right brace token type.
-     */
-    RIGHT_BRACE,
-    /**
-     * org.vulcan.parse.Comma token type.
-     */
-    COMMA,
-    /**
-     * Semicolon token type.
-     */
-    SEMICOLON
-}
-
-/**
- * Jam token type
- */
-interface Token {
-    /**
-     * Gets type.
-     *
-     * @return the type
-     */
-    TokenType getType();
 }
 
 /**
@@ -187,12 +111,25 @@ class IntConstant implements Token, Constant {
  * Jam null constant class, which is a singleton
  */
 class NullConstant implements Token, Constant {
+    private JType  type;
     /**
      * The constant ONLY.
      */
     public static final NullConstant ONLY = new NullConstant();
 
     private NullConstant() {
+    }
+
+    public NullConstant(JType type) {
+        this.type = type;
+    }
+
+    public void setType(JType type) {
+        this.type = type;
+    }
+
+    public JType getJType() {
+        return type;
     }
 
     @Override
@@ -995,6 +932,20 @@ public class Lexer extends StreamTokenizer {
     public static final KeyWord BIND = new KeyWord(":=");
 
     /**
+     * The constant TYPE_BIND.
+     */
+    public static final KeyWord TYPE_BIND = new KeyWord(":");
+
+    public static final KeyWord TYPE_INT = new KeyWord("int");
+
+    public static final KeyWord TYPE_BOOL = new KeyWord("bool");
+
+    public static final KeyWord TYPE_UNIT = new KeyWord("unit");
+
+    public static final KeyWord ARROW = new KeyWord("->");
+
+    public static final KeyWord TYPE_LIST = new KeyWord("list");
+    /**
      * The Word table.
      */
 // wordtable for classifying words (identifiers/operators) in token stream
@@ -1144,6 +1095,10 @@ public class Lexer extends StreamTokenizer {
             case '+':
                 return this.wordTable.get("+");
             case '-':
+                tokenType = this.getToken();
+                if (tokenType == '>') return this.wordTable.get("->");
+                // this alternate else clause will be added in later assignments
+                this.pushBack();
                 return this.wordTable.get("-");
             case '*':
                 return this.wordTable.get("*");
@@ -1177,8 +1132,8 @@ public class Lexer extends StreamTokenizer {
             case ':': {
                 tokenType = this.getToken();
                 if (tokenType == '=') return this.wordTable.get(":=");
-              this.pushBack();
-                throw new ParseException("`:' is not a legalken");
+                this.pushBack();
+                return this.wordTable.get(":");
             }
             default:
                 throw new
@@ -1239,19 +1194,24 @@ public class Lexer extends StreamTokenizer {
       this.wordTable.put("map", Lexer.MAP);
       this.wordTable.put("to", Lexer.TO);
       this.wordTable.put(":=", Lexer.BIND);
-
+      this.wordTable.put(":",Lexer.TYPE_BIND);
+        this.wordTable.put("bool",Lexer.TYPE_BOOL);
+        this.wordTable.put("int",Lexer.TYPE_INT);
+        this.wordTable.put("unit",Lexer.TYPE_UNIT);
+        this.wordTable.put("->",Lexer.ARROW);
+        this.wordTable.put("list",Lexer.TYPE_LIST);
 
         // Install primitive functions
         // <prim>  ::= number? | function? | list? | null?
         //           | cons? | cons | first | rest | arity
 
-      this.wordTable.put("number?", new PrimFun("number?"));
-      this.wordTable.put("function?", new PrimFun("function?"));
-      this.wordTable.put("ref?",new PrimFun("ref?"));
-      this.wordTable.put("list?", new PrimFun("list?"));
+      //this.wordTable.put("number?", new PrimFun("number?"));
+      //this.wordTable.put("function?", new PrimFun("function?"));
+      //this.wordTable.put("ref?",new PrimFun("ref?"));
+      //this.wordTable.put("list?", new PrimFun("list?"));
       this.wordTable.put("null?", new PrimFun("null?"));
       this.wordTable.put("cons?", new PrimFun("cons?"));
-      this.wordTable.put("arity", new PrimFun("arity"));
+      //this.wordTable.put("arity", new PrimFun("arity"));
       this.wordTable.put("cons", new PrimFun("cons"));
       this.wordTable.put("first", new PrimFun("first"));
       this.wordTable.put("rest", new PrimFun("rest"));

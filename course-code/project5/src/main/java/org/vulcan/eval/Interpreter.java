@@ -21,6 +21,8 @@ public class Interpreter {
     public Interpreter(final String fileName) throws IOException {
         this.parser = new Parser(fileName);
         this.astResult = this.parser.parse();
+        astResult.accept(new CheckAstVisitor(new Env<>()));
+        astResult.accept(new TypeCheckVisitor(new Env<>()));
     }
 
 
@@ -28,6 +30,12 @@ public class Interpreter {
         this.parser = new Parser(reader);
         this.astResult = this.parser.parse();
         astResult.accept(new CheckAstVisitor(new Env<>()));
+        astResult.accept(new TypeCheckVisitor(new Env<>()));
+    }
+
+  //// TODO: 2020/12/6 a
+  public static Ast checkTypes() {
+        return null;
     }
 
     public JamVal valueValue(){

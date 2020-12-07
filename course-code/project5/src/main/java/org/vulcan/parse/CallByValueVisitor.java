@@ -265,13 +265,7 @@ public class CallByValueVisitor implements AstVisitor<JamVal> {
             }
             return new ConsVal(arg1, (ListVal) arg2);
         }
-        if ("ref?".equals(rator.getFunValue())){
-            if (a.getArgs().length != 1) {
-                throw new EvalException(a, "error number of arguments");
-            }
-            final JamVal arg = a.getArgs()[0].accept(this);
-            return (arg instanceof Box)?TRUE_VALUE : FALSE_VALUE;
-        }
+
         if (a.getArgs().length != 1) {
             throw new EvalException(a, "error number of arguments");
         }
@@ -293,28 +287,6 @@ public class CallByValueVisitor implements AstVisitor<JamVal> {
                 } else {
                     return (arg instanceof NullVal) ? TRUE_VALUE : FALSE_VALUE;
                 }
-            case "number?":
-                return (arg instanceof NumVal)
-                        ? TRUE_VALUE : FALSE_VALUE;
-            case "function?":
-                return (arg instanceof PrimFunVal |
-                        arg instanceof ClosureVal)
-                        ? TRUE_VALUE : FALSE_VALUE;
-            case "arity":
-                if (arg instanceof PrimFunVal) {
-                    if ("cons".equals(((PrimFunVal) arg).getFunValue())) {
-                        return new NumVal(2);
-                    } else {
-                        return new NumVal(1);
-                    }
-                } else if (arg instanceof ClosureVal) {
-                    return new NumVal(((ClosureVal) arg).getVars().length);
-                } else {
-                    throw new EvalException(a, "arg is not a function");
-                }
-            case "list?":
-                return (arg instanceof ListVal) ?
-                        TRUE_VALUE : FALSE_VALUE;
             case "first":
                 if (isLazyCons) {
                     if (arg instanceof LazyConsVal) {

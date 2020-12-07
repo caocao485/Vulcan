@@ -16,12 +16,12 @@ public class Main {
     }
 
     public static void main(String[] argv) {
-    String exp =
+    /*String exp =
         "let x := ref 10; y := ref 10; in x = y";
         final Interpreter interp = new Interpreter(new StringReader(exp));
-        System.out.println("argv = " + interp.callByNameLazyCons().toString());
+        System.out.println("argv = " + interp.callByNameLazyCons().toString());*/
 
-        runY();
+        //runY();
         while(true) {
             try{
                 System.out.print("> ");

@@ -1,5 +1,7 @@
 package org.vulcan.parse;
 
+import org.vulcan.TypeChecker.JType;
+
 import java.util.Objects;
 
 import static org.vulcan.parse.TokenType.VAR;
