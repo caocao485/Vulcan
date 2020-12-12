@@ -9,7 +9,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 
-import static org.vulcan.parse.OtherCallVisitor.forceEval;
+
 
 public class LazyConsVal implements ListVal {
   private Ast first;
@@ -28,6 +28,15 @@ public class LazyConsVal implements ListVal {
     this.rest = rest;
     this.valueVisitor = valueVisitor;
     this.shouldCached = shouldCached;
+  }
+
+  public static JamVal forceEval(final JamVal thunk) {
+    JamVal value = thunk;
+    while (value instanceof Thunk) {
+      value = ((Thunk<JamVal>) value).value();
+    }
+
+    return value;
   }
 
   public JamVal getFirstValue() {

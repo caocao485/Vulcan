@@ -10,5 +10,10 @@ public class Unit implements JamVal {
 
     }
 
+    @Override
+    public String toString() {
+        return "unit";
+    }
+
     public static final Unit UNIT = new Unit();
 }

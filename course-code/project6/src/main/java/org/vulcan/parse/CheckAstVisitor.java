@@ -2,128 +2,193 @@ package org.vulcan.parse;
 
 import org.vulcan.eval.Env;
 import org.vulcan.eval.SyntaxException;
-import org.vulcan.eval.value.*;
-import org.vulcan.eval.value.JamVal;
-import org.vulcan.eval.value.Void;
 
-
+import java.util.Arrays;
 import java.util.HashMap;
 
+import static org.vulcan.parse.BoolConstant.FALSE;
+import static org.vulcan.parse.BoolConstant.TRUE;
 
-import static org.vulcan.eval.value.Void.VOID;
 
-public class CheckAstVisitor implements AstVisitor<JamVal> {
-    private final Env<Void> env;
+public class CheckAstVisitor implements AstVisitor<Ast> {
+    private final Env<Variable, Variable> env;
+    private final Integer layerNum;
 
-    public CheckAstVisitor(Env<Void> env) {
+    public CheckAstVisitor(Env<Variable, Variable> env) {
         this.env = env;
+        this.layerNum = 1;
+    }
+
+    public CheckAstVisitor(Env<Variable, Variable> env, Integer layerNum) {
+        this.env = env;
+        this.layerNum = layerNum;
     }
 
     @Override
-    public JamVal forBoolConstant(BoolConstant b) {
-        return null;
+    public Ast forBoolConstant(BoolConstant b) {
+        return b;
     }
 
     @Override
-    public JamVal forIntConstant(IntConstant i) {
-        return null;
+    public Ast forIntConstant(IntConstant i) {
+        return i;
     }
 
     @Override
-    public JamVal forNullConstant(NullConstant n) {
-        return null;
+    public Ast forNullConstant(NullConstant n) {
+        return n;
     }
 
     @Override
-    public JamVal forVariable(Variable v) {
-        if(!env.hasVariable(v)){
+    public Ast forVariable(Variable v) {
+        if (!env.hasVariable(v)) {
             throw new SyntaxException("variable: " + v + " is a free variable");
         }
-        return null;
+        return env.lookup(v);
     }
 
     @Override
-    public JamVal forPrimFun(PrimFun f) {
-        return null;
+    public Ast forPrimFun(PrimFun f) {
+        return f;
     }
 
     @Override
-    public JamVal forUnOpApp(UnOpApp u) {
-        u.getArg().accept(this);
-        return null;
+    public Ast forUnOpApp(UnOpApp u) {
+        Ast arg = u.getArg().accept(this);
+        return new UnOpApp(u.getRator(), arg);
     }
 
     @Override
-    public JamVal forBinOpApp(BinOpApp b) {
-        b.getArg1().accept(this);
-        b.getArg2().accept(this);
-        return null;
-    }
-
-    @Override
-    public JamVal forApp(App a) {
-        a.getRator().accept(this);
-
-        for (Ast ast : a.getArgs() ){
-            ast.accept(this);
+    public Ast forBinOpApp(BinOpApp b) {
+        Ast arg1 = b.getArg1().accept(this);
+        Ast arg2 = b.getArg2().accept(this);
+        Op rator = b.getRator();
+        switch(rator.getSymbol()){
+            case "|":
+                return new If(arg1,TRUE,
+                        new App(new PrimFun("asBool"),
+                                new Ast[]{arg2}));
+            case "&":
+                return new If(arg1,
+                        new App(new PrimFun("asBool"),
+                                new Ast[]{arg2}),
+                        FALSE);
+            default :
+                return new BinOpApp(b.getRator(), arg1, arg2);
         }
-        return null;
     }
 
     @Override
-    public JamVal forMap(Map m) {
-        final HashMap<Variable, Void> frame = new HashMap<>();
+    public Ast forApp(App a) {
+        Ast rator = a.getRator().accept(this);
+
+        return new App(rator,
+                Arrays.stream(a.getArgs()).
+                        map(ast -> ast.accept(this)).
+                        toArray(Ast[]::new)
+        );
+
+    }
+
+    @Override
+    public Ast forMap(MapAst m) {
+        final HashMap<Variable, Variable> frame = new HashMap<>();
         //Set
         Variable[] params = m.getVars();
+        Variable[] newParams = new Variable[params.length];
         for (int i = 0; i < params.length; i++) {
-            for (int j = i + 1 ; j < params.length; j++) {
-                if (params[i].equals(params[j])) {
-                    throw new SyntaxException("duplicate elements in map: "+m);
-                }
+            Variable param = params[i];
+            if (frame.containsKey(param)) {
+                throw new SyntaxException("duplicate elements in map: " + m);
             }
+            String newName = param.getName() + ":" + layerNum;
+            Variable newParam = new Variable(newName);
+            newParams[i] = newParam;
+            frame.put(param, newParam);
         }
-        for (Variable var : m.getVars() ){
-            frame.put(var,VOID);
-        }
-        CheckAstVisitor newChecker = new CheckAstVisitor(Env.extendEnv(frame, this.env));
-        m.getBody().accept(newChecker);
-        return null;
+
+        CheckAstVisitor newChecker = new CheckAstVisitor(Env.extendEnv(frame, this.env), layerNum + 1);
+        Ast newBody = m.getBody().accept(newChecker);
+        return new MapAst(newParams, newBody);
     }
 
     @Override
-    public JamVal forIf(If i) {
-        i.getTest().accept(this);
-        i.getConseq().accept(this);
-        i.getAlt().accept(this);
-        return null;
+    public Ast forIf(If i) {
+        Ast newTest = i.getTest().accept(this);
+        Ast newConseq = i.getConseq().accept(this);
+        Ast newAlt = i.getAlt().accept(this);
+        return new If(newTest, newConseq, newAlt);
     }
 
     @Override
-    public JamVal forLet(Let l) {
-        final HashMap<Variable, Void> frame = new HashMap<>();
-        final CheckAstVisitor newChecker = new CheckAstVisitor(Env.extendEnv(frame, this.env));
-        Def[]  defs = l.getDefs();
+    public Ast forLet(Let l) {
+        final HashMap<Variable, Variable> frame = new HashMap<>();
+        Def[] defs = l.getDefs();
+        Def[] newDefs = new Def[defs.length];
         for (int i = 0; i < defs.length; i++) {
-            for (int j = i + 1 ; j < defs.length; j++) {
-                if (defs[i].lhs().equals(defs[j].lhs())) {
-                    throw new SyntaxException("duplicate elements in let: "+l);
-                }
+            Def def = defs[i];
+            Variable defName = def.lhs();
+            Ast body = def.rhs();
+            if (frame.containsKey(defName)) {
+                throw new SyntaxException("duplicate elements in let: " + defName);
             }
+            String newName = defName.getName() + ":" + layerNum;
+            Variable newDefName = new Variable(newName);
+            newDefs[i] = new Def(newDefName, body.accept(this));
+            frame.put(defName, newDefName);
         }
-        //for rec let
-        for (final Def def : l.getDefs()) {
-            frame.put(def.lhs(), VOID);
-            def.rhs().accept(newChecker);
-        }
-        l.getBody().accept(newChecker);
-        return null;
+
+        final CheckAstVisitor newChecker = new CheckAstVisitor(Env.extendEnv(frame, this.env), layerNum + 1);
+        Ast body = l.getBody().accept(newChecker);
+        return new Let(newDefs, body);
     }
 
     @Override
-    public JamVal forBlock(Block b) {
-        for (Ast ast : b.getStates() ){
-            ast.accept(this);
+    public Ast forBlock(Block b) {
+        Ast[] blocks = b.getStates();
+        Ast[] newBlocks = new Ast[blocks.length];
+        for (int i = 0; i < blocks.length; i++) {
+            newBlocks[i] = blocks[i].accept(this);
         }
-        return null;
+        return new Block(newBlocks);
     }
+
+    @Override
+    public Ast forLetRec(LetRec ml) {
+        final HashMap<Variable, Variable> frame = new HashMap<>();
+        MapDef[] defs = ml.getDefs();
+        MapDef[] newDefs = new MapDef[defs.length];
+        final CheckAstVisitor newChecker = new CheckAstVisitor(Env.extendEnv(frame, this.env), layerNum + 1);
+        for (int i = 0; i < defs.length; i++) {
+            MapDef def = defs[i];
+            Variable defName = def.lhs();
+            Ast body = def.rhs();
+            if (frame.containsKey(defName)) {
+                throw new SyntaxException("duplicate elements in letrec: " + defName);
+            }
+            String newName = defName.getName() + ":" + layerNum;
+            Variable newDefName = new Variable(newName);
+            frame.put(defName, newDefName);
+            newDefs[i] = new MapDef(newDefName, body.accept(newChecker));
+        }
+
+
+        Ast body = ml.getBody().accept(newChecker);
+        return new LetRec(newDefs, body);
+    }
+
+    @Override
+    public Ast forLetcc(Letcc letcc) {
+        final HashMap<Variable, Variable> frame = new HashMap<>();
+        String newName = letcc.getVar().getName() + ":" + layerNum;
+        Variable newDefName = new Variable(newName);
+        frame.put(letcc.getVar(), newDefName);
+        final CheckAstVisitor newChecker
+                = new CheckAstVisitor(
+                        Env.extendEnv(frame, this.env),
+                layerNum + 1);
+        Ast body = letcc.getBody().accept(newChecker);
+        return new Letcc(newDefName,body);
+    }
+
 }

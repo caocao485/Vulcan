@@ -2,108 +2,58 @@ package org.vulcan.parse;
 
 import org.vulcan.eval.BinaryOperator;
 import org.vulcan.eval.Env;
+import org.vulcan.eval.SDClosure;
+import org.vulcan.eval.SDEnv;
 import org.vulcan.eval.value.*;
+import org.vulcan.parse.*;
+import org.vulcan.parse.sd.*;
 
+import java.util.Arrays;
 import java.util.HashMap;
 
 import static org.vulcan.eval.value.BoolVal.FALSE_VALUE;
 import static org.vulcan.eval.value.BoolVal.TRUE_VALUE;
 import static org.vulcan.eval.value.NullVal.NULL_VALUE;
 import static org.vulcan.eval.value.Variable.VOID;
+import static org.vulcan.parse.CallByValueVisitor.extractBinaryOperator;
 
-/**
- * @author Think
- */
-public class CallByValueVisitor implements AstVisitor<JamVal> {
+public class SDAstVisitorImpl  implements SDAstVisitor<JamVal> {
+    private SDEnv env;
+    private final HashMap<String, BinaryOperator<JamVal, NumVal>> binaryOpertors
+            = new HashMap<>();
 
-    private Env<Variable,JamVal> env;
-    private final HashMap<String, BinaryOperator<JamVal, NumVal>> binaryOpertors = new HashMap<>();
-
-    private final boolean shouldListCached;
-    private final boolean isLazyCons;
-
-
-    public CallByValueVisitor(Env<Variable,JamVal> env) {
+    public SDAstVisitorImpl(SDEnv env){
         this.env = env;
-        this.isLazyCons = false;
-        this.shouldListCached = false;
-        this.initEnv();
-    }
-
-    public CallByValueVisitor(Env<Variable,JamVal> env,  boolean isLazyCons,boolean shouldListCached) {
-        this.env = env;
-        this.shouldListCached = shouldListCached;
-        this.isLazyCons = isLazyCons;
-        this.initEnv();
-    }
-
-    private void initEnv() {
-        extractBinaryOperator(this.binaryOpertors);
-    }
-
-    public static void extractBinaryOperator(HashMap<String, BinaryOperator<JamVal, NumVal>> binaryOpertors) {
-        binaryOpertors.put("+", (NumVal a, NumVal b) -> {
-            return new NumVal(a.getValue() + b.getValue());
-        });
-        binaryOpertors.put("-", (NumVal a, NumVal b) -> {
-            return new NumVal(a.getValue() - b.getValue());
-        });
-        binaryOpertors.put("*", (NumVal a, NumVal b) -> {
-            return new NumVal(a.getValue() * b.getValue());
-        });
-        binaryOpertors.put("/", (NumVal a, NumVal b) -> {
-            if (b.getValue() == 0) {
-                throw new EvalException(b, "denominator should not be zero");
-            }
-            return new NumVal(a.getValue() / b.getValue());
-        });
-        binaryOpertors.put(">", (NumVal a, NumVal b) -> {
-            return (a.getValue() > b.getValue()) ? TRUE_VALUE : FALSE_VALUE;
-        });
-        binaryOpertors.put(">=", (NumVal a, NumVal b) -> {
-            return (a.getValue() >= b.getValue()) ? TRUE_VALUE : FALSE_VALUE;
-        });
-        binaryOpertors.put("<", (NumVal a, NumVal b) -> {
-            return (a.getValue() < b.getValue()) ? TRUE_VALUE : FALSE_VALUE;
-        });
-        binaryOpertors.put("<=", (NumVal a, NumVal b) -> {
-            return (a.getValue() <= b.getValue()) ? TRUE_VALUE : FALSE_VALUE;
-        });
-
+        extractBinaryOperator(binaryOpertors);
     }
 
     @Override
-    public JamVal forBoolConstant(final BoolConstant b) {
+    public JamVal forBoolConstant(BoolConstant b) {
         return b.getValue() ? TRUE_VALUE : FALSE_VALUE;
     }
 
     @Override
-    public JamVal forIntConstant(final IntConstant i) {
+    public JamVal forIntConstant(IntConstant i) {
         return new NumVal(i.getValue());
     }
 
     @Override
-    public JamVal forNullConstant(final NullConstant n) {
+    public JamVal forNullConstant(NullConstant n) {
         return NULL_VALUE;
     }
 
     @Override
-    public JamVal forVariable(final Variable v) {
-        final JamVal value = this.env.lookup(v);
-        if (value == null) {
-            throw new EvalException(v, " free variable");
-        }
-        return value;
+    public JamVal forVariable(Variable v) {
+        throw new EvalException(v,"unsupported operation");
     }
 
     @Override
-    public JamVal forPrimFun(final PrimFun f) {
+    public JamVal forPrimFun(PrimFun f) {
         return PrimFunVal.getFunValue(f.getName());
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public JamVal forUnOpApp(final UnOpApp u) {
+    public JamVal forUnOpApp(UnOpApp u) {
         final Op op = u.getRator();
         if (!op.isUnOp()) {
             throw new EvalException(u, "error unop");
@@ -145,7 +95,7 @@ public class CallByValueVisitor implements AstVisitor<JamVal> {
     }
 
     @Override
-    public JamVal forBinOpApp(final BinOpApp b) {
+    public JamVal forBinOpApp(BinOpApp b) {
         final Op op = b.getRator();
         if (!op.isBinOp()) {
             throw new EvalException(b, "error Binop operator");
@@ -220,44 +170,35 @@ public class CallByValueVisitor implements AstVisitor<JamVal> {
     }
 
     @Override
-    public JamVal forApp(final App a) {
+    public JamVal forApp(App a) {
         final JamVal rator = a.getRator().accept(this);
         if (!(rator instanceof ClosureVal) &&
-                !(rator instanceof PrimFunVal)) {
+                !(rator instanceof PrimFunVal) &&
+                !(rator instanceof SDClosure)) {
             throw new EvalException(a, "rator is not a function");
         }
         if (rator instanceof PrimFunVal) {
             return this.forPrimApp((PrimFunVal) rator, a);
         } else {
-            return this.forClosureVal((ClosureVal<JamVal>) rator, a);
+            return this.forClosureVal((SDClosure) rator, a);
         }
     }
 
+    private JamVal forClosureVal(final SDClosure rator, final App a) {
+        final JamVal[] frame = Arrays
+                .stream(a.getArgs())
+                .map(arg -> arg.accept(this))
+                .toArray(JamVal[]::new);
 
-    private JamVal forClosureVal(final ClosureVal<JamVal> rator, final App a) {
-        final Variable[] params = rator.getVars();
-        final Ast[] args = a.getArgs();
-        if (params.length != args.length) {
-            throw new EvalException(a, "the number of arguments are not match");
-        }
-        final HashMap<Variable, JamVal> frame = new HashMap<>();
-
-        for (int i = 0; i < params.length; i++) {
-            frame.put(params[i], args[i].accept(this));
-        }
-        final CallByValueVisitor newVisitor =
-                new CallByValueVisitor(Env.extendEnv(frame, rator.getEnv()), isLazyCons,shouldListCached);
-        final JamVal result = rator.getBody().accept(newVisitor);
-        return result;
+        final SDAstVisitorImpl newVisitor =
+                new SDAstVisitorImpl(SDEnv.extendEnv(frame, rator.getEnv()));
+        return rator.getBody().accept(newVisitor);
     }
 
     private JamVal forPrimApp(final PrimFunVal rator, final App a) {
         if ("cons".equals(rator.getFunValue())) {
             if (a.getArgs().length != 2) {
                 throw new EvalException(a, "error number of arguments");
-            }
-            if (isLazyCons) {
-                return new LazyConsVal(a.getArgs()[0], a.getArgs()[1], this, shouldListCached);
             }
             final JamVal arg1 = a.getArgs()[0].accept(this);
             final JamVal arg2 = a.getArgs()[1].accept(this);
@@ -283,17 +224,9 @@ public class CallByValueVisitor implements AstVisitor<JamVal> {
     private JamVal forOneArgApp(final PrimFunVal rator, final JamVal arg, final App a) {
         switch (rator.getFunValue()) {
             case "cons?":
-                if (isLazyCons) {
-                    return (arg instanceof LazyConsVal) ? TRUE_VALUE : FALSE_VALUE;
-                } else {
-                    return (arg instanceof ConsVal) ? TRUE_VALUE : FALSE_VALUE;
-                }
+                return (arg instanceof ConsVal) ? TRUE_VALUE : FALSE_VALUE;
             case "null?":
-                if (isLazyCons) {
-                    return (arg instanceof NullVal) ? TRUE_VALUE : FALSE_VALUE;
-                } else {
-                    return (arg instanceof NullVal) ? TRUE_VALUE : FALSE_VALUE;
-                }
+                return (arg instanceof NullVal) ? TRUE_VALUE : FALSE_VALUE;
             case "number?":
                 return (arg instanceof NumVal)
                         ? TRUE_VALUE : FALSE_VALUE;
@@ -322,27 +255,12 @@ public class CallByValueVisitor implements AstVisitor<JamVal> {
                 return (arg instanceof ListVal) ?
                         TRUE_VALUE : FALSE_VALUE;
             case "first":
-                if (isLazyCons) {
-                    if (arg instanceof LazyConsVal) {
-                        return ((LazyConsVal) arg).getFirstValue();
-                    } else {
-                        throw new EvalException(a, "a is not a list or a is null");
-                    }
-                } else {
-                    if (arg instanceof ConsVal) {
+                if (arg instanceof ConsVal) {
                         return ((ConsVal) arg).getFirst();
                     } else {
                         throw new EvalException(a, "a is not a list or a is null");
                     }
-                }
             case "rest":
-                if (isLazyCons) {
-                    if (arg instanceof LazyConsVal) {
-                        return ((LazyConsVal) arg).getRestValue();
-                    } else {
-                        throw new EvalException(a, "a is not a list or a is null");
-                    }
-                }
                 if (arg instanceof ConsVal) {
                     return ((ConsVal) arg).getRest();
                 } else {
@@ -354,69 +272,78 @@ public class CallByValueVisitor implements AstVisitor<JamVal> {
     }
 
     @Override
-    public JamVal forMap(final MapAst m) {
-        return new ClosureVal<>(m.getVars(), m.getBody(), env);
+    public JamVal forMap(MapAst m) {
+        throw new EvalException(m,"unsupported operation");
     }
 
     @Override
-    public JamVal forIf(final If i) {
+    public JamVal forIf(If i) {
         final JamVal testV = i.getTest().accept(this);
         if (!(testV instanceof BoolVal)) {
             throw new EvalException(i, "test result are not BoolVal");
         }
         return (testV == TRUE_VALUE) ?
                 i.getConseq().accept(this) : i.getAlt().accept(this);
+
     }
 
     @Override
-    public JamVal forLet(final Let letAst) {
-        final HashMap<Variable, JamVal> frame = new HashMap<>();
-        for (final Def def : letAst.getDefs()) {
-            frame.put(def.lhs(), VOID);
-        }
-        final CallByValueVisitor newVisitor =
-                new CallByValueVisitor(Env.extendEnv(frame, env), isLazyCons,shouldListCached);
-
-        for (final Def def : letAst.getDefs()) {
-            frame.put(def.lhs(), def.rhs().accept(newVisitor));
-        }
-
-        final JamVal result = letAst.getBody().accept(newVisitor);
-        return result;
+    public JamVal forLet(Let l) {
+        throw new EvalException(l,"unsupported operation");
     }
 
     @Override
     public JamVal forBlock(Block b) {
-        JamVal result = VOID;
-        Ast[] states = b.getStates();
-        for(int i=0;i < states.length;i++) {
-            if(i == states.length - 1){
-                result = states[i].accept(this);
-            }
-            states[i].accept(this);
-        }
-        return result;
+        throw new EvalException(b,"unsupported operation");
     }
 
     @Override
     public JamVal forLetRec(LetRec ml) {
-        final HashMap<Variable, JamVal> frame = new HashMap<>();
-        for (final MapDef def : ml.getDefs()) {
-            frame.put(def.lhs(), VOID);
-        }
-        final CallByValueVisitor newVisitor =
-                new CallByValueVisitor(Env.extendEnv(frame, env), isLazyCons,shouldListCached);
+        throw new EvalException(ml,"unsupported operation");
+    }
 
-        for (final MapDef def : ml.getDefs()) {
-            frame.put(def.lhs(), def.rhs().accept(newVisitor));
+    @Override
+    public JamVal forSDLet(SDLet sdLet) {
+        final JamVal[] frame = Arrays
+                .stream(sdLet.getAsts())
+                .map(arg -> arg.accept(this))
+                .toArray(JamVal[]::new);
+
+        final SDAstVisitorImpl newVisitor =
+                new SDAstVisitorImpl(SDEnv.extendEnv(frame, env));
+
+        return sdLet.getBody().accept(newVisitor);
+    }
+
+    @Override
+    public JamVal forSDLetRec(SDLetRec sdLetrec) {
+        SDMap[] sdMaps = sdLetrec.getMaps();
+        final JamVal[] frame = new JamVal[sdMaps.length];
+        for (int i = 0; i < sdMaps.length; i++) {
+            frame[i] = VOID;
+        }
+        final SDAstVisitorImpl newVisitor =
+                new SDAstVisitorImpl(SDEnv.extendEnv(frame, env));
+
+        for (int i = 0; i < sdMaps.length; i++) {
+            frame[i] = sdMaps[i].accept(newVisitor);
         }
 
-        final JamVal result = ml.getBody().accept(newVisitor);
-        return result;
+        return sdLetrec.getBody().accept(newVisitor);
+    }
+
+    @Override
+    public JamVal forSDMap(SDMap sdMap) {
+        return new SDClosure(sdMap.getParamLen(),sdMap.getBody(),env);
+    }
+
+    @Override
+    public JamVal forPair(Pair pair) {
+        return SDEnv.lookup(env,pair);
     }
 
     @Override
     public JamVal forLetcc(Letcc letcc) {
-        throw new EvalException(letcc," not supported in non-cps code");
+        throw new EvalException("letcc","not supported in non-cps code");
     }
 }

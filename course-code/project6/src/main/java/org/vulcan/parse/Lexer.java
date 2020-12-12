@@ -3,6 +3,8 @@ package org.vulcan.parse;
 import java.io.*;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * Jam term org.vulcan.parse.Ast type
@@ -639,17 +641,17 @@ class BinOpApp implements Ast {
 /**
  * Jam map (closure) class
  */
-class Map implements Ast {
+class MapAst implements Ast {
     private final Variable[] vars;
     private final Ast body;
 
     /**
-     * Instantiates a new org.vulcan.parse.Map.
+     * Instantiates a new org.vulcan.parse..
      *
      * @param v the v
      * @param b the b
      */
-    Map(final Variable[] v, final Ast b) {
+    MapAst(final Variable[] v, final Ast b) {
       this.vars = v;
       this.body = b;
     }
@@ -683,7 +685,54 @@ class Map implements Ast {
 }
 
 /**
- * Jam function (org.vulcan.parse.PrimFun or org.vulcan.parse.Map) application class
+ * Jam letcc (continuation) class
+ */
+class Letcc implements Ast {
+    private final Variable var;
+    private final Ast body;
+
+
+    /**
+     * Instantiates a new org.vulcan.parse..
+     *
+     * @param v the v
+     * @param b the b
+     */
+    Letcc(final Variable v, final Ast b) {
+        this.var = v;
+        this.body = b;
+    }
+
+    /**
+     * Get vars variable [ ].
+     *
+     * @return the variable [ ]
+     */
+    public Variable getVar() {
+        return this.var;
+    }
+
+    /**
+     * Gets body.
+     *
+     * @return the body
+     */
+    public Ast getBody() {
+        return this.body;
+    }
+
+    @Override
+    public <T> T accept(final AstVisitor<T> v) {
+        return v.forLetcc(this);
+    }
+
+    public String toString() {
+        return "letcc " + var + " in " + this.body;
+    }
+}
+
+/**
+ * Jam function (org.vulcan.parse.PrimFun or org.vulcan.parse.) application class
  */
 class App implements Ast {
     private final Ast rator;
@@ -744,8 +793,10 @@ class Block implements Ast {
 
     @Override
     public String toString() {
-        return "Block{" +
-                "states=" + Arrays.toString(states) +
+        return "{" + Arrays
+                .stream(states)
+                .map(Objects::toString)
+                .collect(Collectors.joining("; ")) +
                 '}';
     }
 
@@ -862,6 +913,90 @@ class Let implements Ast {
 
 
 /**
+ * Jam letrec expression class
+ */
+class LetRec implements Ast {
+    private final MapDef[] defs;
+    private final Ast body;
+
+    /**
+     * Instantiates a new org.vulcan.parse.Let.
+     *
+     * @param d the d
+     * @param b the b
+     */
+    LetRec(final MapDef[] d, final Ast b) {
+        this.defs = d;
+        this.body = b;
+    }
+
+    @Override
+    public <T> T accept(final AstVisitor<T> v) {
+        return v.forLetRec(this);
+    }
+
+    /**
+     * Get defs def [ ].
+     *
+     * @return the def [ ]
+     */
+    public MapDef[] getDefs() {
+        return this.defs;
+    }
+
+    /**
+     * Gets body.
+     *
+     * @return the body
+     */
+    public Ast getBody() {
+        return this.body;
+    }
+
+    public String toString() {
+        return "letrec " + ToString.toString(this.defs, " ") + " in " + this.body;
+    }
+}
+
+class MapDef {
+    private final Variable lhs;
+    private final Ast rhs;
+
+    /**
+     * Instantiates a new org.vulcan.parse.Def.
+     *
+     * @param l the l
+     * @param r the r
+     */
+    MapDef(final Variable l, final Ast r) {
+        this.lhs = l;
+        this.rhs = r;
+    }
+
+    /**
+     * Lhs variable.
+     *
+     * @return the variable
+     */
+    public Variable lhs() {
+        return this.lhs;
+    }
+
+    /**
+     * Rhs ast.
+     *
+     * @return the ast
+     */
+    public Ast rhs() {
+        return this.rhs;
+    }
+
+    public String toString() {
+        return this.lhs + " := " + this.rhs + ";";
+    }
+}
+
+/**
  * Jam definition class
  */
 class Def {
@@ -976,6 +1111,13 @@ public class Lexer extends StreamTokenizer {
      * The constant LET.
      */
     public static final KeyWord LET = new KeyWord("let");
+
+    /**
+     * The constant LETREC.
+     */
+    public static final KeyWord LET_REC = new KeyWord("letrec");
+
+    public static final KeyWord LET_CC = new KeyWord("letcc");
     /**
      * The constant IN.
      */
@@ -1235,6 +1377,8 @@ public class Lexer extends StreamTokenizer {
       this.wordTable.put("then", Lexer.THEN);
       this.wordTable.put("else", Lexer.ELSE);
       this.wordTable.put("let", Lexer.LET);
+      this.wordTable.put("letrec", Lexer.LET_REC);
+      this.wordTable.put("letcc",LET_CC);
       this.wordTable.put("in", Lexer.IN);
       this.wordTable.put("map", Lexer.MAP);
       this.wordTable.put("to", Lexer.TO);
@@ -1255,6 +1399,7 @@ public class Lexer extends StreamTokenizer {
       this.wordTable.put("cons", new PrimFun("cons"));
       this.wordTable.put("first", new PrimFun("first"));
       this.wordTable.put("rest", new PrimFun("rest"));
+      this.wordTable.put("asBool", new PrimFun("asBool"));
     }
 
     /**

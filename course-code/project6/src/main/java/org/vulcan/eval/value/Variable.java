@@ -1,12 +1,12 @@
 package org.vulcan.eval.value;
 
-public class Void implements JamVal {
+public class Variable implements JamVal {
 
-    private Void(){
+    private Variable(){
 
     }
 
-    public static final Void VOID = new Void();
+    public static final Variable VOID = new Variable();
 
     @Override
     public <T> T accept(JamValVisitor<T> jamValVisitor) {

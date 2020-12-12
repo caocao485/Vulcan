@@ -49,7 +49,7 @@ public interface JamValVisitor<T> {
     T forPrimFunVal(PrimFunVal primFunVal);
 
 
-    T forVoid(Void v);
+    T forVoid(Variable v);
 
     T forLazyConVal(LazyConsVal v);
 

@@ -75,7 +75,7 @@ public interface AstVisitor<T> {
      * @param m the m
      * @return the t
      */
-    T forMap(Map m);
+    T forMap(MapAst m);
 
     /**
      * For if t.
@@ -94,4 +94,8 @@ public interface AstVisitor<T> {
     T forLet(Let l);
 
     T forBlock(Block b);
+
+    T forLetRec(LetRec ml);
+
+    T forLetcc(Letcc letcc);
 }

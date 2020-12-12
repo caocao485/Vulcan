@@ -2,6 +2,7 @@ package org.vulcan.parse;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.Scanner;
 
 
@@ -94,14 +95,29 @@ public class Parser {
             final Ast body = this.parseExp();
             return new Let(defs, body);
         }
-        if (peek == MAP) {
+        if (peek == LET_REC) {
             this.in.readToken();
-            final Variable[] vars = this.parseIdList();
-            if (this.in.readToken() != TO) {
-                throw new ParseException("missing TO keyword");
+            final MapDef[] defs = this.parseMapDefPlus();
+            if (this.in.readToken() != IN) {
+                throw new ParseException("missing IN keyword");
             }
             final Ast body = this.parseExp();
-            return new Map(vars, body);
+            return new LetRec(defs, body);
+        }
+        if (peek == LET_CC) {
+            this.in.readToken();
+            final Token var = this.in.readToken();
+            if (!(var instanceof Variable) ) {
+                throw new ParseException("missing Variable ");
+            }
+            if (this.in.readToken() != IN) {
+                throw new ParseException("missing IN keyword");
+            }
+            final Ast body = this.parseExp();
+            return new Letcc((Variable)var, body);
+        }
+        if (peek == MAP) {
+            return this.parseMap();
         }
         if(peek == LeftBrace.ONLY){
             this.in.readToken();
@@ -118,6 +134,33 @@ public class Parser {
         }
         // TODO: multiple terms
         return currentAst;
+    }
+
+    private MapDef[] parseMapDefPlus() {
+        final ArrayList<MapDef> defList = new ArrayList<>();
+        defList.add(this.parseMapDef());
+        //let in前探
+        while (this.in.peek() != IN) {
+            defList.add(this.parseMapDef());
+        }
+        return defList.toArray(new MapDef[defList.size()]);
+    }
+
+    private MapDef parseMapDef() {
+        final Token lhs = this.in.readToken();
+        if (lhs.getType() != VAR) {
+            this.error(lhs, "error definition expression");
+        }
+        final Token keywordBind = this.in.readToken();
+        if (keywordBind != BIND) {
+            this.error(keywordBind, "missing bind keyword");
+        }
+        final Ast rhs = this.parseMap();
+        final Token semicolon = this.in.readToken();
+        if (semicolon != SemiColon.ONLY) {
+            this.error(semicolon, "missing semicolon ';'");
+        }
+        return new MapDef((Variable) lhs, rhs);
     }
 
     private Block parseBlock() {
@@ -213,6 +256,16 @@ public class Parser {
         this.error(token, "error factor expression");
         return null;
 
+    }
+
+    private  Ast parseMap(){
+        this.in.readToken();
+        final Variable[] vars = this.parseIdList();
+        if (this.in.readToken() != TO) {
+            throw new ParseException("missing TO keyword");
+        }
+        final Ast body = this.parseExp();
+        return new MapAst(vars, body);
     }
 
     /**

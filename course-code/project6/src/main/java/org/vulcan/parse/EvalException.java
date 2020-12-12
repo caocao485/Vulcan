@@ -13,4 +13,8 @@ public class EvalException extends RuntimeException {
     public EvalException(final JamVal val, final String msg) {
         super("val: " + val + "  msg: " + msg);
     }
+
+    public <K> EvalException(Object val, String msg) {
+        super("val: " + val + "  msg: " + msg);
+    }
 }

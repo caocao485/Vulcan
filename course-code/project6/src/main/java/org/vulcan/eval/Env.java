@@ -1,46 +1,60 @@
 package org.vulcan.eval;
 
 import org.vulcan.parse.EvalException;
-import org.vulcan.parse.Variable;
 
 import java.util.HashMap;
 
-import static org.vulcan.eval.value.Void.VOID;
+import static org.vulcan.eval.value.Variable.VOID;
 
 /**
  * @author Think
  */
-public class Env<T> {
-    private HashMap<Variable, T> frame;
-    private Env<T> fatherEnv;
+public class Env<K,V> {
+    private HashMap<K, V> frame;
+    private Env<K,V> fatherEnv;
 
     public Env() {
 
     }
 
     @SuppressWarnings("unchecked")
-    private Env(final HashMap<Variable, T> frame, final Env<T> fatherEnv) {
+    private Env(final HashMap<K, V> frame, final Env<K, V> fatherEnv) {
         this.frame =frame;
         this.fatherEnv = fatherEnv;
     }
 
-    public static <T> Env<T> extendEnv(final HashMap<Variable, T> frame, final Env<T> fatherEnv) {
+    public static <K, V> Env<K,V> extendEnv(final HashMap<K, V>  frame, final Env<K,V> fatherEnv) {
         return new Env<>(frame, fatherEnv);
     }
 
 
+    public HashMap<K, V> getFrame() {
+        return frame;
+    }
+
+    public void setFrame(HashMap<K, V> frame) {
+        this.frame = frame;
+    }
+
+    public Env<K, V> getFatherEnv() {
+        return fatherEnv;
+    }
+
+    public void setFatherEnv(Env<K, V> fatherEnv) {
+        this.fatherEnv = fatherEnv;
+    }
 
     /**
      * // TODO: 2020/11/23
      * @param var
      * @param value
      */
-    public void setValueByVar(final Variable var, final T value) {
+    public void setValueByVar(final K var, final V value) {
 
     }
 
 
-    public boolean hasVariable(Variable var){
+    public boolean hasVariable(K var){
         if(this.frame != null && this.frame.containsKey(var)){
             return true;
         }else{
@@ -49,10 +63,10 @@ public class Env<T> {
     }
 
     @SuppressWarnings("unchecked")
-    public <T> T lookup(final Variable var) {
-        T value = null;
+    public  V lookup(final K var) {
+        V value = null;
         if (this.frame != null) {
-            value = (T) this.frame.get(var);
+            value = this.frame.get(var);
             if (value == null) {
                 if (this.fatherEnv != null) {
                     return this.fatherEnv.lookup(var);

@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 
-import static org.vulcan.parse.OtherCallVisitor.forceEval;
 
 /**
  * @author Think
@@ -27,72 +26,73 @@ public class Interpreter {
     public Interpreter(final Reader reader) {
         this.parser = new Parser(reader);
         this.astResult = this.parser.parse();
-        astResult.accept(new CheckAstVisitor(new Env<>()));
     }
 
     public JamVal valueValue(){
-        return this.astResult.accept(new CallByValueVisitor(new Env<>()));
+        return this.astResult.accept(new CheckAstVisitor(new Env<>())).accept(new CallByValueVisitor(new Env<>()));
     }
 
-    public JamVal nameValue(){
-        return forceEval(this.astResult.accept(new OtherCallVisitor(new Env<>(), false,false)));
+    ////TODO
+    public Ast unshadow() {
+        return  astResult.accept(new CheckAstVisitor(new Env<>()));
     }
 
-    public JamVal needValue(){
-        return forceEval(this.astResult.accept(new OtherCallVisitor(new Env<>(), true,false)));
+    //TODO
+    public Ast convertToCPS() {
+        return astResult
+                .accept(new CheckAstVisitor(new Env<>()))
+                .accept(new CPSAstVisitor(new IndexBox(0)));
     }
 
-    public JamVal valueName(){
-        return this.astResult.accept(new CallByValueVisitor(new Env<>(),true,false));
+    //TODO
+    public JamVal cpsEval() {
+        return astResult
+                .accept(new CheckAstVisitor(new Env<>()))
+                .accept(new CPSAstVisitor(new IndexBox(0)))
+                .accept(new CallByValueVisitor(new Env<>()));
     }
 
-    public JamVal nameName(){
-     return forceEval(this.astResult.accept(new OtherCallVisitor(new Env<>(), false, true,false)));
+    public Ast convertToSD(){
+        return astResult
+                .accept(new CheckAstVisitor(new Env<>()))
+                .accept(new ToSDAstVisitor(new Env<>()));
     }
 
-  public JamVal needName() {
-    return forceEval(this.astResult.accept(new OtherCallVisitor(new Env<>(), true,true,false)));
-  }
-
-  public JamVal valueNeed(){
-      return this.astResult.accept(new CallByValueVisitor(new Env<>(),true,true));
-  }
-
-  public JamVal nameNeed() {
-      return forceEval(this.astResult.accept(new OtherCallVisitor(new Env<>(), false,true)));
-  }
-  public JamVal needNeed(){
-      return forceEval(this.astResult.accept(new OtherCallVisitor(new Env<>(), true,true)));
-  }
-
-   public JamVal callByValue() {
-        return this.astResult.accept(new CallByValueVisitor(new Env<>()));
+    public JamVal sdEval(){
+        Ast tempAst = astResult
+                .accept(new CheckAstVisitor(new Env<>()))
+                .accept(new ToSDAstVisitor(new Env<>()));
+        //System.out.println(tempAst);
+        return tempAst
+                .accept(new SDAstVisitorImpl(new SDEnv()));
     }
 
-
-    public JamVal callByName() {
-        return forceEval(this.astResult.accept(new OtherCallVisitor(new Env<>(), false,false)));
+    public Ast convertCpsToSD(){
+        return astResult
+                .accept(new CheckAstVisitor(new Env<>()))
+                .accept(new CPSAstVisitor(new IndexBox(0)))
+                .accept(new ToSDAstVisitor(new Env<>()));
     }
 
-    public JamVal callByNeed() {
-        return forceEval(this.astResult.accept(new OtherCallVisitor(new Env<>(), true,false)));
-    }
-
-    public JamVal callByNameLazyCons() {
-        return forceEval(this.astResult.accept(new OtherCallVisitor(new Env<>(), false,true)));
-    }
-
-    public JamVal callByNeedLazyCons() {
-        return forceEval(this.astResult.accept(new OtherCallVisitor(new Env<>(), true,true)));
+    public JamVal CpsSdEval(){
+        Ast tempAst = astResult
+                .accept(new CheckAstVisitor(new Env<>()))
+                .accept(new CPSAstVisitor(new IndexBox(0)))
+                .accept(new ToSDAstVisitor(new Env<>()));
+        System.out.println(tempAst);
+        return tempAst
+                .accept(new SDAstVisitorImpl(new SDEnv()));
     }
 
     public static void main(String[] args) {
         final Interpreter interp = new Interpreter(new StringReader("let m:=(map x to x); in m"));
         //false
-        System.out.println(interp.callByName().toString());
+        //System.out.println(interp.callByName().toString());
         //true
-        System.out.println(interp.callByValue().toString());
+        //System.out.println(interp.callByValue().toString());
     }
+
+
 }
 
 

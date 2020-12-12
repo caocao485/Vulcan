@@ -21,6 +21,7 @@ public class PrimFunVal implements JamVal {
         PrimFunVal.WORD2_VALUE.put("cons", new PrimFunVal("cons"));
         PrimFunVal.WORD2_VALUE.put("first", new PrimFunVal("first"));
         PrimFunVal.WORD2_VALUE.put("rest", new PrimFunVal("rest"));
+        PrimFunVal.WORD2_VALUE.put("asBool",new PrimFunVal("asBool"));
     }
 
     private PrimFunVal(final String funValue) {

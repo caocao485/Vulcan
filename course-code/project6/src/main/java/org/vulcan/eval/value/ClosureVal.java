@@ -13,9 +13,9 @@ import java.util.Objects;
 public class ClosureVal<T extends JamVal> implements JamVal {
     private Variable[] vars;
     private Ast body;
-    private Env<T> env;
+    private Env<Variable,T> env;
 
-    public ClosureVal(final Variable[] vars, final Ast body, final Env<T> env) {
+    public ClosureVal(final Variable[] vars, final Ast body, final Env<Variable,T> env) {
 
         this.vars = vars;
         this.body = body;
@@ -38,11 +38,11 @@ public class ClosureVal<T extends JamVal> implements JamVal {
         this.body = body;
     }
 
-    public Env<T> getEnv() {
+    public Env<Variable,T> getEnv() {
         return env;
     }
 
-    public void setEnv(Env<T> env) {
+    public void setEnv(Env<Variable,T> env) {
         this.env = env;
     }
 

@@ -16,21 +16,18 @@ public class Main {
     }
 
     public static void main(String[] argv) {
-    String exp =
-        "let x := ref 10; y := ref 10; in x = y";
-        final Interpreter interp = new Interpreter(new StringReader(exp));
-        System.out.println("argv = " + interp.callByNameLazyCons().toString());
-
-        runY();
         while(true) {
             try{
                 System.out.print("> ");
                 Scanner in = new Scanner(System.in);
-                final Interpreter interp1 = new Interpreter(new StringReader(in.nextLine()));
-                System.out.println("<=> " + interp1.needNeed().toString());
+                String inputString = in.nextLine();
+                if("exit()".equals(inputString)){
+                    break;
+                }
+                final Interpreter interp1 = new Interpreter(new StringReader(inputString));
+                System.out.println("<=> " + interp1.CpsSdEval().toString());
             }catch (Exception e) {
                 e.printStackTrace();
-                continue;
             }
 
         }

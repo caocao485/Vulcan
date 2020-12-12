@@ -16,7 +16,7 @@ public class Variable implements Token, Term {
      *
      * @param n the n
      */
-    Variable(final String n) {
+    public Variable(final String n) {
         this.name = n;
     }
 

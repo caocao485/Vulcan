@@ -116,5 +116,16 @@ public class Assign1Test extends TestCase {
         }
     } //end of func
 
+    public void testLetRec() {
+        try {
+            final String input = "letrec id := map y to y; in id(1)";
+            final String output = "letrec id := map y to y; in id(1)";
+            System.out.println(input);
+            this.checkString("letrec", output, input);
+
+        } catch (final Exception e) {
+            TestCase.fail("let threw " + e);
+        }
+    } //end of func
 
 }
